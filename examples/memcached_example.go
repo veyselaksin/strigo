@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/veyselaksin/strigo/pkg/config"
 	"github.com/veyselaksin/strigo/pkg/duration"
 	"github.com/veyselaksin/strigo/pkg/limiter"
 )
@@ -14,8 +15,14 @@ func MemcachedExample() {
 	rateLimiter, err := limiter.NewLimiter(limiter.Config{
 		Backend: limiter.Memcached,
 		Address: "localhost:11211",
-		Period:  duration.SECONDLY,
-		Limit:   1,
+		Rules: []limiter.RuleConfig{
+			{
+				Pattern:  "user-.*",
+				Strategy: config.TokenBucket,
+				Period:   duration.SECONDLY,
+				Limit:    1,
+			},
+		},
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -35,8 +42,14 @@ func MemcachedBatchExample() {
 	rateLimiter, err := limiter.NewLimiter(limiter.Config{
 		Backend: limiter.Memcached,
 		Address: "localhost:11211",
-		Period:  duration.SECONDLY,
-		Limit:   5,
+		Rules: []limiter.RuleConfig{
+			{
+				Pattern:  "user-.*",
+				Strategy: config.TokenBucket,
+				Period:   duration.SECONDLY,
+				Limit:    5,
+			},
+		},
 	})
 	if err != nil {
 		log.Fatal(err)

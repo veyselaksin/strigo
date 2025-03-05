@@ -9,6 +9,7 @@
 - 🛡 **Protects against abuse**: Prevents excessive API requests.
 - 📏 **Flexible limit strategies**: Token Bucket, Leaky Bucket, Fixed Window, and Sliding Window.
 - 📦 **Lightweight and easy to use**: Simple API for seamless integration.
+- 🌐 **Fiber Framework Support**: Built-in middleware for Fiber web framework.
 
 ## Installation 📦
 

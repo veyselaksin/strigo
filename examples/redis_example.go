@@ -13,11 +13,16 @@ import (
 // RedisExample demonstrates basic Redis rate limiting
 func RedisExample() {
 	rateLimiter, err := limiter.NewLimiter(limiter.Config{
-		Backend:  limiter.Redis,
-		Address:  "localhost:6379",
-		Period:   duration.MINUTELY,
-		Limit:    1,
-		Strategy: config.SlidingWindow,
+		Backend: limiter.Redis,
+		Address: "localhost:6379",
+		Rules: []limiter.RuleConfig{
+			{
+				Pattern:  "user-.*",
+				Strategy: config.SlidingWindow,
+				Period:   duration.MINUTELY,
+				Limit:    1,
+			},
+		},
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -50,8 +55,14 @@ func BatchRequestExample() {
 	rateLimiter, err := limiter.NewLimiter(limiter.Config{
 		Backend: limiter.Redis,
 		Address: "localhost:6379",
-		Period:  duration.SECONDLY,
-		Limit:   5,
+		Rules: []limiter.RuleConfig{
+			{
+				Pattern:  "user-.*",
+				Strategy: config.SlidingWindow,
+				Period:   duration.SECONDLY,
+				Limit:    5,
+			},
+		},
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -74,8 +85,14 @@ func ResetExample() {
 	rateLimiter, err := limiter.NewLimiter(limiter.Config{
 		Backend: limiter.Redis,
 		Address: "localhost:6379",
-		Period:  duration.MINUTELY,
-		Limit:   2,
+		Rules: []limiter.RuleConfig{
+			{
+				Pattern:  "user-.*",
+				Strategy: config.SlidingWindow,
+				Period:   duration.MINUTELY,
+				Limit:    2,
+			},
+		},
 	})
 	if err != nil {
 		log.Fatal(err)
