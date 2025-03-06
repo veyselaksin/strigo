@@ -5,21 +5,19 @@ import (
 	"log"
 	"time"
 
-	"github.com/veyselaksin/strigo/pkg/config"
-	"github.com/veyselaksin/strigo/pkg/duration"
-	"github.com/veyselaksin/strigo/pkg/limiter"
+	"github.com/veyselaksin/strigo"
 )
 
 // MemcachedExample demonstrates basic Memcached rate limiting
 func MemcachedExample() {
-	rateLimiter, err := limiter.NewLimiter(limiter.Config{
-		Backend: limiter.Memcached,
+	rateLimiter, err := strigo.NewLimiter(strigo.LimiterConfig{
+		Backend: strigo.Memcached,
 		Address: "localhost:11211",
-		Rules: []limiter.RuleConfig{
+		Rules: []strigo.RuleConfig{
 			{
 				Pattern:  "user-.*",
-				Strategy: config.TokenBucket,
-				Period:   duration.SECONDLY,
+				Strategy: strigo.TokenBucket,
+				Period:   strigo.SECONDLY,
 				Limit:    1,
 			},
 		},
@@ -39,14 +37,14 @@ func MemcachedExample() {
 
 // MemcachedBatchExample demonstrates handling multiple requests with Memcached
 func MemcachedBatchExample() {
-	rateLimiter, err := limiter.NewLimiter(limiter.Config{
-		Backend: limiter.Memcached,
+	rateLimiter, err := strigo.NewLimiter(strigo.LimiterConfig{
+		Backend: strigo.Memcached,
 		Address: "localhost:11211",
-		Rules: []limiter.RuleConfig{
+		Rules: []strigo.RuleConfig{
 			{
 				Pattern:  "user-.*",
-				Strategy: config.TokenBucket,
-				Period:   duration.SECONDLY,
+				Strategy: strigo.TokenBucket,
+				Period:   strigo.SECONDLY,
 				Limit:    5,
 			},
 		},

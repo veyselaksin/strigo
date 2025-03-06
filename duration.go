@@ -1,4 +1,4 @@
-package duration
+package strigo
 
 import (
 	"fmt"
@@ -79,7 +79,7 @@ func (p Period) ToDuration() time.Duration {
 
 func IsValidPeriod(p Period) bool {
 	switch p {
-	case SECONDLY, MINUTELY, HOURLY, DAILY, WEEKLY, MONTHLY:
+	case SECONDLY, MINUTELY, HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY:
 		return true
 	default:
 		return false

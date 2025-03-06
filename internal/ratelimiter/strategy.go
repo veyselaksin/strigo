@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/veyselaksin/strigo/pkg/config"
+	"github.com/veyselaksin/strigo"
 )
 
 // Strategy defines the interface for rate limiting strategies
@@ -145,15 +145,15 @@ func (s *SlidingWindowStrategy) IsAllowed(count int64, limit int64) bool {
 
 // NewStrategy creates the appropriate strategy based on configuration
 // Currently only implements TokenBucket, but can be extended for other algorithms
-func NewStrategy(strategyType config.Strategy) (Strategy, error) {
+func NewStrategy(strategyType strigo.Strategy) (Strategy, error) {
 	switch strategyType {
-	case config.TokenBucket:
+	case strigo.TokenBucket:
 		return &TokenBucketStrategy{}, nil
-	case config.LeakyBucket:
+	case strigo.LeakyBucket:
 		return NewLeakyBucketStrategy(time.Second), nil // 1 token/second leak rate
-	case config.FixedWindow:
+	case strigo.FixedWindow:
 		return NewFixedWindowStrategy(time.Minute), nil // 1-minute window
-	case config.SlidingWindow:
+	case strigo.SlidingWindow:
 		return NewSlidingWindowStrategy(time.Minute), nil // 1-minute sliding window
 	default:
 		return nil, fmt.Errorf("unsupported strategy: %s", strategyType)

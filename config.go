@@ -1,10 +1,8 @@
-package config
+package strigo
 
 import (
 	"fmt"
 	"time"
-
-	"github.com/veyselaksin/strigo/pkg/duration"
 )
 
 // Strategy represents the rate limiting strategy
@@ -27,7 +25,7 @@ type Config struct {
 	Strategy Strategy `json:"strategy"`
 
 	// Period defines the time window for rate limiting
-	Period duration.Period `json:"period"`
+	Period Period `json:"period"`
 
 	// Limit defines the maximum number of requests allowed per period
 	Limit int64 `json:"limit"`
@@ -60,7 +58,7 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("limit must be positive")
 	}
 
-	if !duration.IsValidPeriod(c.Period) {
+	if !IsValidPeriod(c.Period) {
 		return fmt.Errorf("invalid period: %s", c.Period)
 	}
 
@@ -114,7 +112,7 @@ func (c *Config) GetDuration() time.Duration {
 func NewDefaultConfig() *Config {
 	return &Config{
 		Strategy: TokenBucket,
-		Period:   duration.MINUTELY,
+		Period:   MINUTELY,
 		Limit:    100,
 		Prefix:   "strigo",
 		BackendConfig: BackendConfig{
