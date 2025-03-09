@@ -1,9 +1,24 @@
-# Advanced Strigo Usage
+---
+layout: page
+title: Advanced Usage
+nav_order: 3
+---
+
+# Advanced Usage
+{: .no_toc }
+
+## Table of contents
+{: .no_toc .text-delta }
+
+1. TOC
+{:toc}
 
 ## Dynamic Rate Limiting
+
 Strigo allows you to apply dynamic rate limiting rules based on request properties. Here are some common scenarios:
 
-### 1. Query Parameter Based Limits
+### Query Parameter Based Limits
+
 ```go
 app.Get("/api/images", fiberMiddleware.RateLimitHandler(manager, func(c *fiber.Ctx) []limiter.RuleConfig {
     queryType := c.Query("type")
@@ -27,12 +42,14 @@ app.Get("/api/images", fiberMiddleware.RateLimitHandler(manager, func(c *fiber.C
     }
 }), handler)
 ```
+{: .highlight }
 
-### 2. Multiple Limits Based on User Type
+### User Type Based Limits
+
 ```go
 app.Get("/api/content", fiberMiddleware.RateLimitHandler(manager, func(c *fiber.Ctx) []limiter.RuleConfig {
     userType := c.Get("X-User-Type")
-
+    
     switch userType {
     case "pro":
         return []limiter.RuleConfig{
@@ -76,24 +93,49 @@ app.Get("/api/content", fiberMiddleware.RateLimitHandler(manager, func(c *fiber.
     }
 }), handler)
 ```
+{: .highlight }
 
-## Using Memcached
-To use Memcached instead of Redis:
+## Best Practices
+{: .text-delta }
+
+1. **Pattern Naming**
+   - Use unique and meaningful pattern names
+   - Include version or feature identifiers
+   {: .note }
+
+2. **Multiple Limits**
+   - Define both short-term and long-term limits
+   - Consider different user tiers
+   {: .important }
+
+3. **Error Handling**
+   - Handle rate limit exceeds gracefully
+   - Provide meaningful error messages
+   {: .warning }
+
+4. **Monitoring**
+   - Log rate limiting events
+   - Set up alerts for abuse
+   {: .danger }
+
+## Performance Tips
+
+### Redis Configuration
+
+For optimal performance with Redis:
+
+```go
+manager := ratelimiter.NewManager(limiter.Redis, "localhost:6379")
+```
+{: .note }
+
+### Memcached Configuration
+
+For Memcached setup:
 
 ```go
 manager := ratelimiter.NewManager(limiter.Memcached, "localhost:11211")
 ```
+{: .note }
 
-## Best Practices
-- **Pattern Naming:** Use unique and meaningful pattern names for each endpoint
-- **Multiple Limits:** Define both short-term and long-term limits for critical endpoints
-- **Error Handling:** Handle rate limit exceeds with appropriate HTTP status codes
-- **Monitoring:** Log and monitor rate limiting events
-
-## Performance Tips
-- Use Redis cluster for scalability under high load
-- Optimize the number of patterns - avoid using too many patterns per request
-- Configure appropriate buffer size and connection pool settings
-
----
-Navigation: [Home](README.md) | [Getting Started](getting-started.md) | [API Reference](api.md)
+[Next: API Reference](api){: .btn .btn-purple }

@@ -1,34 +1,100 @@
-# Strigo
+---
+layout: page
+title: Getting Started
+nav_order: 2
+---
 
-Strigo is a powerful and flexible rate limiting library for Go applications, with a focus on easy integration with the Fiber web framework.
+# Getting Started with Strigo
+{: .no_toc }
 
-## Documentation
+## Table of contents
+{: .no_toc .text-delta }
 
-- [Getting Started](getting-started.md) - Installation and basic usage
-- [Advanced Guide](advanced.md) - Advanced usage patterns and best practices
-- [API Reference](api.md) - Complete API documentation
+1. TOC
+{:toc}
+
+## Installation
+
+To add Strigo to your project, run the following command:
+
+```bash
+go get github.com/veyselaksin/strigo
+```
+{: .highlight }
 
 ## Features
 
-- Multiple storage backends (Redis, Memcached)
+Strigo comes packed with powerful features out of the box:
+
+- Multiple storage support (Redis, Memcached)
 - Flexible rate limiting rules
-- Token bucket strategy implementation
-- Dynamic rule configuration
-- Fiber framework integration
-- Multiple time period support (minutely, hourly, daily, etc.)
+- Support for Token Bucket strategy
+- Define limits for different time intervals
+- Integration with Fiber web framework
+{: .fs-6 .fw-300 }
 
-## Quick Links
+## Quick Start
 
-- [Installation Guide](getting-started.md#installation)
-- [Basic Usage](getting-started.md#quick-start)
-- [Configuration Options](getting-started.md#configuration)
-- [Advanced Examples](advanced.md)
-- [API Documentation](api.md)
+Below is a simple example application:
 
-## License
+```go
+package main
 
-[License information would go here]
+import (
+    "log"
+    "github.com/gofiber/fiber/v2"
+    "github.com/veyselaksin/strigo/config"
+    fiberMiddleware "github.com/veyselaksin/strigo/middleware/fiber"
+    "github.com/veyselaksin/strigo/middleware/ratelimiter"
+    "github.com/veyselaksin/strigo/pkg/duration"
+    "github.com/veyselaksin/strigo/pkg/limiter"
+)
 
-## Contributing
+func main() {
+    app := fiber.New()
 
-[Contributing guidelines would go here]
+    // Create rate limiter manager
+    manager := ratelimiter.NewManager(limiter.Redis, "localhost:6379")
+    defer manager.Close()
+
+    // Simple rate-limited endpoint
+    app.Get("/api/basic", fiberMiddleware.RateLimitHandler(manager, func(c *fiber.Ctx) []limiter.RuleConfig {
+        return []limiter.RuleConfig{
+            {
+                Pattern:  "basic_limit",
+                Strategy: config.TokenBucket,
+                Period:   duration.MINUTELY,
+                Limit:    10,
+            },
+        }
+    }), func(c *fiber.Ctx) error {
+        return c.JSON(fiber.Map{"message": "Success"})
+    })
+
+    log.Fatal(app.Listen(":3000"))
+}
+```
+{: .highlight }
+
+## Configuration
+
+### Rate Limit Rules
+
+Each rule contains the following parameters:
+
+| Parameter | Description |
+|:----------|:------------|
+| Pattern | Unique identifier for the rule |
+| Strategy | Rate limiting strategy (e.g., TokenBucket) |
+| Period | Time interval (MINUTELY, HOURLY, DAILY) |
+| Limit | Maximum number of allowed requests |
+
+### Storage Options
+
+Strigo supports the following storage options:
+
+- **Redis:** `limiter.Redis`
+- **Memcached:** `limiter.Memcached`
+{: .note }
+
+[Next: Advanced Usage](advanced){: .btn .btn-purple }

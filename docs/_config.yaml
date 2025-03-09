@@ -1,0 +1,40 @@
+# Site settings
+title: Strigo Documentation
+description: Documentation for the Strigo Rate Limiting Library
+baseurl: "/strigo" # If your repo name is different, change this
+url: "https://veyselaksin.github.io" # Replace with your GitHub Pages URL
+
+# Theme settings
+remote_theme: just-the-docs/just-the-docs
+color_scheme: dark
+
+# Enable search
+search_enabled: true
+
+# Aux links for the upper right navigation
+aux_links:
+  "Strigo on GitHub":
+    - "https://github.com/veyselaksin/strigo"
+
+# Makes Aux links open in a new tab
+aux_links_new_tab: true
+
+# Sort order for navigation links
+nav_sort: case_sensitive
+
+# Footer content
+footer_content: "Copyright &copy; 2024 Veysel Aksin. Distributed under the MIT license."
+
+# Enable or disable heading anchors
+heading_anchors: true
+
+# Back to top link
+back_to_top: true
+back_to_top_text: "Back to top"
+
+# Footer last edited timestamp
+last_edit_timestamp: true
+last_edit_time_format: "%b %e %Y at %I:%M %p"
+
+# Enable copy code button
+enable_copy_code_button: true
