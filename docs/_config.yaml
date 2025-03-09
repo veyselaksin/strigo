@@ -4,8 +4,8 @@ description: Documentation for the Strigo Rate Limiting Library
 baseurl: "/strigo" # Repo adınıza göre değiştirin
 url: "https://veyselaksin.github.io"
 
-# Theme settings - Bu kısmı değiştiriyoruz
-theme: just-the-docs # remote_theme yerine theme kullanıyoruz
+# Theme settings - GitHub Pages için remote_theme kullanmalıyız
+remote_theme: just-the-docs/just-the-docs
 
 # Color scheme
 color_scheme: dark
