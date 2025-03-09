@@ -8,7 +8,7 @@ url: "https://veyselaksin.github.io"
 remote_theme: just-the-docs/just-the-docs
 
 # Color scheme
-color_scheme: dark
+color_scheme: light
 
 # Enable search
 search_enabled: true
