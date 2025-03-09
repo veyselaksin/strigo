@@ -1,0 +1,38 @@
+// Custom styles
+@import "./custom/custom";
+
+// Just the Docs theme styles
+@import "just-the-docs/scss/just-the-docs";
+
+// Your custom styles
+.site-title {
+  color: #ffffff;
+}
+
+.navigation-list-item {
+  padding: 0.5rem 0;
+}
+
+.main-content {
+  a {
+    color: #7253ed;
+    text-decoration: none;
+    
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.highlight {
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  padding: 1rem;
+}
+
+code {
+  font-family: 'Courier New', monospace;
+  background-color: #f5f5f5;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+}

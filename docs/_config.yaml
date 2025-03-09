@@ -1,11 +1,13 @@
 # Site settings
 title: Strigo Documentation
 description: Documentation for the Strigo Rate Limiting Library
-baseurl: "/strigo" # If your repo name is different, change this
-url: "https://veyselaksin.github.io" # Replace with your GitHub Pages URL
+baseurl: "/strigo" # Repo adınıza göre değiştirin
+url: "https://veyselaksin.github.io"
 
-# Theme settings
-remote_theme: just-the-docs/just-the-docs
+# Theme settings - Bu kısmı değiştiriyoruz
+theme: just-the-docs # remote_theme yerine theme kullanıyoruz
+
+# Color scheme
 color_scheme: dark
 
 # Enable search
