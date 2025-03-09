@@ -134,7 +134,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Support 💬
 
 - Create an [Issue](https://github.com/veyselaksin/strigo/issues)
-- Send an [Email](mailto:veyselaksin@gmail.com)
+- Send an [Email](mailto:veyselaksn@gmail.com)
 
 ---
 
