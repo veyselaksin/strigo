@@ -1,7 +1,7 @@
 # Site settings
 title: Strigo Documentation
 description: Documentation for the Strigo Rate Limiting Library
-baseurl: "${{ steps.pages.outputs.base_path }}" # Repository name
+baseurl: "StriGO" # Repository name
 url: "https://veyselaksin.github.io"
 
 # Theme settings - GitHub Pages için remote_theme kullanmalıyız
