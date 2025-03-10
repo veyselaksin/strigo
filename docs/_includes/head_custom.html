@@ -1,3 +1,11 @@
 <!-- Custom head content -->
-<link rel="shortcut icon" type="image/x-icon" href="{{ site.baseurl }}/favicon.ico">
+<link rel="shortcut icon" type="image/x-icon" href="{{ site.baseurl }}{{ site.favicon_ico }}">
+<link rel="icon" type="image/x-icon" href="{{ site.baseurl }}{{ site.favicon_ico }}">
 <link rel="stylesheet" href="{{ '/assets/css/main.css' | relative_url }}">
+<!-- Apple Touch Icon (iOS için) -->
+<link rel="apple-touch-icon" sizes="180x180" href="{{ site.baseurl }}{{ site.favicon_ico }}">
+<!-- Android Chrome için -->
+<link rel="icon" type="image/png" sizes="192x192" href="{{ site.baseurl }}{{ site.favicon_ico }}">
+<!-- Windows için -->
+<meta name="msapplication-TileImage" content="{{ site.baseurl }}{{ site.favicon_ico }}">
+<meta name="msapplication-TileColor" content="#ffffff">

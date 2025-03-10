@@ -3,6 +3,7 @@ title: Strigo Documentation
 description: Documentation for the Strigo Rate Limiting Library
 baseurl: "StriGO" # Repository name
 url: "https://veyselaksin.github.io"
+favicon_ico: "/assets/images/favicon.ico"
 
 # Theme settings - GitHub Pages için remote_theme kullanmalıyız
 remote_theme: just-the-docs/just-the-docs

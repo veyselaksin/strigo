@@ -4,7 +4,7 @@ title: Getting Started
 nav_order: 2
 ---
 
-# Getting Started with Strigo
+# Getting Started with StriGo
 {: .no_toc }
 
 ## Table of contents
@@ -15,7 +15,7 @@ nav_order: 2
 
 ## Installation
 
-To add Strigo to your project, run the following command:
+To add StriGo to your project, run:
 
 ```bash
 go get github.com/veyselaksin/strigo
@@ -24,18 +24,59 @@ go get github.com/veyselaksin/strigo
 
 ## Features
 
-Strigo comes packed with powerful features out of the box:
+StriGo provides powerful rate limiting capabilities:
 
-- Multiple storage support (Redis, Memcached)
-- Flexible rate limiting rules
-- Support for Token Bucket strategy
-- Define limits for different time intervals
-- Integration with Fiber web framework
+- **Multiple Storage Backends**: Redis and Memcached support
+- **Flexible Rate Limiting**: Multiple strategies and time windows
+- **Advanced Strategies**: Token Bucket, Leaky Bucket, Sliding Window
+- **Framework Integration**: Built-in Fiber middleware
+- **Dynamic Configuration**: Runtime rule updates
+- **High Performance**: Optimized for scale
 {: .fs-6 .fw-300 }
 
 ## Quick Start
 
-Below is a simple example application:
+### Basic Rate Limiter
+
+```go
+package main
+
+import (
+    "log"
+    "github.com/veyselaksin/strigo"
+)
+
+func main() {
+    // Create a new rate limiter
+    limiter, err := strigo.NewLimiter(strigo.LimiterConfig{
+        Backend: strigo.Redis,
+        Address: "localhost:6379",
+        Rules: []strigo.RuleConfig{
+            {
+                Pattern:  "api_requests",
+                Strategy: strigo.TokenBucket,
+                Period:   strigo.MINUTELY,
+                Limit:    100,
+            },
+        },
+        Prefix: "myapp",
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer limiter.Close()
+
+    // Use the rate limiter
+    if limiter.Allow("user123") {
+        // Handle request
+    } else {
+        // Rate limit exceeded
+    }
+}
+```
+{: .highlight }
+
+### Web Framework Integration
 
 ```go
 package main
@@ -43,31 +84,36 @@ package main
 import (
     "log"
     "github.com/gofiber/fiber/v2"
-    "github.com/veyselaksin/strigo/config"
-    fiberMiddleware "github.com/veyselaksin/strigo/middleware/fiber"
-    "github.com/veyselaksin/strigo/middleware/ratelimiter"
-    "github.com/veyselaksin/strigo/pkg/duration"
-    "github.com/veyselaksin/strigo/pkg/limiter"
+    "github.com/veyselaksin/strigo"
 )
 
 func main() {
     app := fiber.New()
-
+    
     // Create rate limiter manager
-    manager := ratelimiter.NewManager(limiter.Redis, "localhost:6379")
+    manager := strigo.NewManager(strigo.Redis, "localhost:6379")
     defer manager.Close()
 
-    // Simple rate-limited endpoint
-    app.Get("/api/basic", fiberMiddleware.RateLimitHandler(manager, func(c *fiber.Ctx) []limiter.RuleConfig {
-        return []limiter.RuleConfig{
+    // Apply rate limiting middleware
+    app.Use(fiberMiddleware.RateLimitHandler(manager, func(c *fiber.Ctx) []strigo.RuleConfig {
+        return []strigo.RuleConfig{
             {
-                Pattern:  "basic_limit",
-                Strategy: config.TokenBucket,
-                Period:   duration.MINUTELY,
-                Limit:    10,
+                Pattern:  "api_limit",
+                Strategy: strigo.TokenBucket,
+                Period:   strigo.MINUTELY,
+                Limit:    100,
+            },
+            {
+                Pattern:  "daily_limit",
+                Strategy: strigo.SlidingWindow,
+                Period:   strigo.DAILY,
+                Limit:    1000,
             },
         }
-    }), func(c *fiber.Ctx) error {
+    }))
+
+    // Define your routes
+    app.Get("/api", func(c *fiber.Ctx) error {
         return c.JSON(fiber.Map{"message": "Success"})
     })
 
@@ -76,25 +122,78 @@ func main() {
 ```
 {: .highlight }
 
-## Configuration
+## Configuration Options
 
 ### Rate Limit Rules
 
-Each rule contains the following parameters:
+Each rule defines how requests are limited:
 
-| Parameter | Description |
-|:----------|:------------|
-| Pattern | Unique identifier for the rule |
-| Strategy | Rate limiting strategy (e.g., TokenBucket) |
-| Period | Time interval (MINUTELY, HOURLY, DAILY) |
-| Limit | Maximum number of allowed requests |
+| Parameter | Description | Example |
+|:----------|:------------|:--------|
+| Pattern | Rule identifier | `"api_requests"` |
+| Strategy | Limiting algorithm | `strigo.TokenBucket` |
+| Period | Time window | `strigo.MINUTELY` |
+| Limit | Request limit | `100` |
 
-### Storage Options
+### Available Strategies
 
-Strigo supports the following storage options:
+StriGo supports multiple rate limiting strategies:
 
-- **Redis:** `limiter.Redis`
-- **Memcached:** `limiter.Memcached`
+- **Token Bucket**: Simple, efficient rate limiting
+- **Leaky Bucket**: Smooth request processing
+- **Fixed Window**: Reset-based limiting
+- **Sliding Window**: Accurate, rolling window limiting
+
+### Time Windows
+
+Configure limits for different time periods:
+
+```go
+rules := []strigo.RuleConfig{
+    {
+        Pattern:  "minutely",
+        Strategy: strigo.TokenBucket,
+        Period:   strigo.MINUTELY,
+        Limit:    100,
+    },
+    {
+        Pattern:  "hourly",
+        Strategy: strigo.SlidingWindow,
+        Period:   strigo.HOURLY,
+        Limit:    1000,
+    },
+    {
+        Pattern:  "daily",
+        Strategy: strigo.LeakyBucket,
+        Period:   strigo.DAILY,
+        Limit:    10000,
+    },
+}
+```
+{: .highlight }
+
+## Storage Options
+
+### Redis Setup
+
+```go
+limiter, err := strigo.NewLimiter(strigo.LimiterConfig{
+    Backend: strigo.Redis,
+    Address: "localhost:6379",
+    Rules:   rules,
+})
+```
+{: .note }
+
+### Memcached Setup
+
+```go
+limiter, err := strigo.NewLimiter(strigo.LimiterConfig{
+    Backend: strigo.Memcached,
+    Address: "localhost:11211",
+    Rules:   rules,
+})
+```
 {: .note }
 
 [Next: Advanced Usage](advanced){: .btn .btn-purple }
