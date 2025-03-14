@@ -1,0 +1,68 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get tag message
+        id: tag
+        run: |
+          TAG_MESSAGE=$(git tag -l --format='%(contents)' ${{ github.ref_name }})
+          echo "message<<EOF" >> $GITHUB_OUTPUT
+          echo "$TAG_MESSAGE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREVIOUS_TAG" ]; then
+            # If this is the first tag
+            CHANGELOG=$(git log --pretty=format:"* %s" ${{ github.ref_name }})
+          else
+            # Get changes since previous tag
+            CHANGELOG=$(git log --pretty=format:"* %s" $PREVIOUS_TAG..${{ github.ref_name }})
+          fi
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          body: |
+            # ${{ github.ref_name }}
+
+            ## 🚀 New Features
+            - Added comprehensive test framework
+            - Added Docker support for testing
+            - Implemented GitHub Actions CI/CD pipeline
+            - Added test coverage reporting
+
+            ## 📚 Documentation
+            - Added detailed test documentation
+            - Updated README with usage examples
+            - Added Docker usage guide
+
+            ## 🛠 Improvements
+            - Added test helpers
+            - Added Redis test suite
+            - Added Memcached test suite
+            - Added Fiber integration tests
+
+            ## 📝 Changelog
+            ${{ steps.changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
