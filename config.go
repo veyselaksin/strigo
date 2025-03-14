@@ -5,21 +5,19 @@ import (
 	"time"
 )
 
-// Strategy represents the rate limiting strategy
+// Strategy represents the rate limiting strategy type
 type Strategy string
 
+// Available rate limiting strategies
 const (
-	// TokenBucket is the default strategy
-	TokenBucket Strategy = "token_bucket"
-	// LeakyBucket strategy
-	LeakyBucket Strategy = "leaky_bucket"
-	// FixedWindow strategy
-	FixedWindow Strategy = "fixed_window"
-	// SlidingWindow strategy
-	SlidingWindow Strategy = "sliding_window"
+	TokenBucket   Strategy = "token_bucket"   // Classic token bucket algorithm
+	LeakyBucket   Strategy = "leaky_bucket"   // Leaky bucket algorithm
+	FixedWindow   Strategy = "fixed_window"   // Fixed time window counting
+	SlidingWindow Strategy = "sliding_window" // Sliding time window counting
 )
 
-// Config represents the rate limiter configuration
+// Config represents the rate limiter configuration.
+// It contains all necessary settings to initialize and run a rate limiter.
 type Config struct {
 	// Strategy defines the rate limiting algorithm to use
 	Strategy Strategy `json:"strategy"`
@@ -33,11 +31,12 @@ type Config struct {
 	// Prefix is used to create unique keys in the storage backend
 	Prefix string `json:"prefix"`
 
-	// Backend configuration
+	// Backend configuration for storage
 	BackendConfig BackendConfig `json:"backend"`
 }
 
 // BackendConfig holds the storage backend configuration
+// Supports Redis and Memcached as storage backends
 type BackendConfig struct {
 	// Type specifies the backend type (redis, memcached)
 	Type string `json:"type"`
