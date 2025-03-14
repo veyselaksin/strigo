@@ -1,6 +1,7 @@
 # StriGO 🚀
 
 [![Go Version](https://img.shields.io/github/go-mod/go-version/veyselaksin/StriGO)](https://go.dev/)
+[![Version](https://img.shields.io/github/v/release/veyselaksin/StriGO?include_prereleases)](https://github.com/veyselaksin/StriGO/releases)
 [![License](https://img.shields.io/github/license/veyselaksin/StriGO)](LICENSE)
 [![Test Coverage](https://img.shields.io/badge/coverage-87%25-green)](https://github.com/veyselaksin/StriGO/actions)
 
