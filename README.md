@@ -145,3 +145,12 @@ Made with ❤️ by [Veysel Aksin](https://github.com/veyselaksin)
 This project demonstrates comprehensive testing for Redis and Memcached implementations using Go and Fiber framework.
 
 ## Project Structure
+
+![Coverage](https://img.shields.io/badge/dynamic/json?color=brightgreen&label=coverage&query=coverage&url=https://api.github.com/repos/{owner}/{repo}/contents/coverage.txt)
+
+## Test Coverage
+
+This project maintains test coverage statistics. You can view:
+- Coverage details in pull request comments
+- Coverage summary in GitHub Actions job summary
+- Coverage badge above
