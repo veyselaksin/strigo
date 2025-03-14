@@ -1,0 +1,39 @@
+name: Cache Management
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # Her gün gece yarısı
+  workflow_dispatch: # Manuel tetikleme için
+
+jobs:
+  cleanup:
+    name: Cache Cleanup
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+      memcached:
+        image: memcached:alpine
+        ports:
+          - 11211:11211
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.22.3"
+
+      - name: Run cleanup tests
+        run: |
+          go test -v ./tests/cleanup/... -timeout 10m
+        env:
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          MEMCACHED_HOST: localhost
+          MEMCACHED_PORT: 11211

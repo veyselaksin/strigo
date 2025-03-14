@@ -1,0 +1,117 @@
+name: StriGo Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      memcached:
+        image: memcached:alpine
+        ports:
+          - 11211:11211
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.22.3"
+          cache: true
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Run Tests
+        run: |
+          go test -v -race -coverprofile=coverage.txt -covermode=atomic ./tests/...
+        env:
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          MEMCACHED_HOST: localhost
+          MEMCACHED_PORT: 11211
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.txt
+          flags: unittests
+          fail_ci_if_error: true
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run integration tests
+        run: |
+          docker compose -f docker/docker-compose.yml run --rm tests
+
+  performance:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.22.3"
+
+      - name: Run performance tests
+        run: |
+          go test -v ./tests/... -run TestPerformance -timeout 30m
+        env:
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          MEMCACHED_HOST: localhost
+          MEMCACHED_PORT: 11211
+
+  notify:
+    name: Notify Status
+    runs-on: ubuntu-latest
+    needs: [test, integration, performance]
+    if: always()
+
+    steps:
+      - name: Check build status
+        if: ${{ contains(needs.*.result, 'failure') }}
+        run: exit 1
+
+      - name: Notify Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
