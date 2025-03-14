@@ -23,7 +23,7 @@ StriGO is a comprehensive testing framework for Redis and Memcached implementati
 
 ### 📥 Installation
 ```bash
-go get github.com/veyselaksin/StriGO
+go get github.com/veyselaksin/strigo
 ```
 
 ## 💡 Basic Usage
@@ -105,7 +105,7 @@ docker compose -f docker/docker-compose.yml run --rm tests go test ./tests/... -
 ```
 
 ## 📚 Documentation
-For detailed documentation, please visit our [Documentation](docs/README.md).
+For detailed documentation, please visit our [Documentation](https://veyselaksin.github.io/strigo/).
 
 ## 🤝 Contributing
 Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md).
