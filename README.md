@@ -154,3 +154,8 @@ This project maintains test coverage statistics. You can view:
 - Coverage details in pull request comments
 - Coverage summary in GitHub Actions job summary
 - Coverage badge above
+
+![Coverage](https://img.shields.io/badge/Coverage-0%25-red)
+
+## Test Coverage
+Test coverage is automatically calculated and updated on each push.
