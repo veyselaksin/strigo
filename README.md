@@ -1,3 +1,55 @@
+# StriGO
+
+[![Tests](https://github.com/veyselaksin/StriGO/actions/workflows/tests.yml/badge.svg)](https://github.com/veyselaksin/StriGO/actions)
+[![Go Coverage](https://github.com/veyselaksin/StriGO/wiki/coverage.svg)](https://raw.githubusercontent.com/veyselaksin/StriGO/main/coverage.out)
+
+StriGO is a comprehensive testing framework for Redis and Memcached implementations using Go and the Fiber framework.
+
+## Features
+- Redis and Memcached testing utilities
+- Integration with Fiber framework
+- Docker-based test environment
+- Comprehensive test coverage
+- Easy-to-use test helpers
+
+## Quick Start
+
+### Prerequisites
+- Go 1.22.3 or later
+- Docker and Docker Compose
+- Redis
+- Memcached
+
+### Installation
+```bash
+go get github.com/veyselaksin/StriGO
+```
+
+### Running Tests
+```bash
+# Run all tests
+go test ./tests/... -v
+
+# Run specific tests
+go test ./tests/redis/... -v
+go test ./tests/memcached/... -v
+```
+
+### Docker Support
+```bash
+# Run tests in Docker
+docker compose -f docker/docker-compose.yml run --rm tests
+```
+
+## Documentation
+For detailed documentation, please visit our [Documentation](docs/README.md).
+
+## Contributing
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md).
+
+## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 # StriGo 🦉
 
 **StriGo** is a high-performance rate limiter for Go, designed to work seamlessly with Redis, Memcached, and Dragonfly. It provides efficient and scalable request limiting to protect your applications from abuse and ensure fair resource distribution.

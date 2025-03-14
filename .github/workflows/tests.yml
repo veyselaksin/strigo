@@ -42,8 +42,10 @@ jobs:
 
       - name: Run Unit Tests with Coverage
         run: |
-          go test -v -race ./tests/... -coverprofile=coverage.out -covermode=atomic -timeout 10m
-          go tool cover -func=coverage.out
+          mkdir -p coverage
+          go test -v -race ./tests/... -coverprofile=coverage/coverage.out -covermode=atomic -timeout 10m
+          go tool cover -func=coverage/coverage.out > coverage/coverage.txt
+          go tool cover -html=coverage/coverage.out -o coverage/coverage.html
         env:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
@@ -51,11 +53,16 @@ jobs:
           MEMCACHED_PORT: 11211
         continue-on-error: true
 
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v3
+      - name: Store coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
-          path: coverage.out
+          name: coverage-reports
+          path: |
+            coverage/coverage.out
+            coverage/coverage.txt
+            coverage/coverage.html
+          retention-days: 14
 
   integration:
     name: Integration Tests
