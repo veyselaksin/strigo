@@ -43,7 +43,7 @@ jobs:
       - name: Run Unit Tests with Coverage
         run: |
           go test -v -race ./tests/... -coverprofile=coverage.out -covermode=atomic -timeout 10m
-          go tool cover -func=coverage.out > coverage.txt
+          go tool cover -func=coverage.out
         env:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
@@ -51,35 +51,11 @@ jobs:
           MEMCACHED_PORT: 11211
         continue-on-error: true
 
-      - name: Generate Coverage Badge
-        uses: tj-actions/coverage-badge-go@v2
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
         with:
-          filename: coverage.txt
-
-      - name: Verify Changed files
-        uses: tj-actions/verify-changed-files@v16
-        id: verify-changed-files
-        with:
-          files: README.md
-
-      - name: Commit changes
-        if: steps.verify-changed-files.outputs.files_changed == 'true'
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add README.md
-          git commit -m "chore: Updated coverage badge."
-          git push
-
-      - name: Add Coverage PR Comment
-        uses: marocchino/sticky-pull-request-comment@v2
-        if: github.event_name == 'pull_request'
-        with:
-          recreate: true
-          path: code-coverage-results.md
-
-      - name: Write to Job Summary
-        run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
+          name: coverage-report
+          path: coverage.out
 
   integration:
     name: Integration Tests

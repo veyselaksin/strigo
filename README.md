@@ -159,3 +159,8 @@ This project maintains test coverage statistics. You can view:
 
 ## Test Coverage
 Test coverage is automatically calculated and updated on each push.
+
+![Tests](https://github.com/veyselaksin/StriGO/actions/workflows/tests.yml/badge.svg)
+
+## Test Coverage
+Test coverage reports are available in GitHub Actions artifacts.
