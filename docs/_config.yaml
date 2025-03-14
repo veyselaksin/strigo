@@ -1,7 +1,7 @@
 # Site settings
 title: Strigo Documentation
 description: Documentation for the Strigo Rate Limiting Library
-baseurl: "StriGO" # Repository name
+baseurl: "strigo" # Repository name
 url: "https://veyselaksin.github.io"
 favicon_ico: "/assets/images/favicon.ico"
 
