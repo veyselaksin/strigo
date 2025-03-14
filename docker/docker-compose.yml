@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+      - memcached
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MEMCACHED_HOST=memcached
+      - MEMCACHED_PORT=11211
+
+  tests:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+    depends_on:
+      - redis
+      - memcached
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MEMCACHED_HOST=memcached
+      - MEMCACHED_PORT=11211
+    volumes:
+      - ../tests:/app/tests
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  memcached:
+    image: memcached:alpine
+    ports:
+      - "11211:11211"
+
+volumes:
+  redis_data: 
