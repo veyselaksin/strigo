@@ -44,7 +44,8 @@ jobs:
         run: |
           mkdir -p coverage
           go test -v -race ./tests/... -coverprofile=coverage/coverage.out -covermode=atomic -timeout 10m
-          go tool cover -func=coverage/coverage.out > coverage/coverage.txt
+          COVERAGE=$(go tool cover -func=coverage/coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+')
+          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
           go tool cover -html=coverage/coverage.out -o coverage/coverage.html
         env:
           REDIS_HOST: localhost
@@ -53,6 +54,18 @@ jobs:
           MEMCACHED_PORT: 11211
         continue-on-error: true
 
+      - name: Update Coverage Badge
+        if: github.ref == 'refs/heads/main'
+        run: |
+          COVERAGE_INT=${COVERAGE%.*}
+          COLOR="red"
+          if [ $COVERAGE_INT -gt 80 ]; then
+            COLOR="green"
+          elif [ $COVERAGE_INT -gt 60 ]; then
+            COLOR="yellow"
+          fi
+          curl -X POST "https://img.shields.io/badge/coverage-${COVERAGE}%25-${COLOR}" > coverage/badge.svg
+
       - name: Store coverage artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -60,8 +73,8 @@ jobs:
           name: coverage-reports
           path: |
             coverage/coverage.out
-            coverage/coverage.txt
             coverage/coverage.html
+            coverage/badge.svg
           retention-days: 14
 
   integration:
