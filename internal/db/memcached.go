@@ -23,20 +23,24 @@ func NewMemcachedClient(address string) (*MemcachedClient, error) {
 	}, nil
 }
 
-func (m *MemcachedClient) Increment(ctx context.Context, key string, expiry time.Duration) (int64, error) {
-	// Memcached increment returns uint64, we need to cast safely
-	value, err := m.client.Increment(key, 1)
+func (m *MemcachedClient) Increment(ctx context.Context, key string, amount int64, expiry time.Duration) (int64, error) {
+	// Memcached increment accepts uint64, need to convert safely
+	if amount < 0 {
+		return 0, fmt.Errorf("memcached increment amount cannot be negative: %d", amount)
+	}
+	
+	value, err := m.client.Increment(key, uint64(amount))
 	if err == memcache.ErrCacheMiss {
-		// Key doesn't exist, create it
+		// Key doesn't exist, create it with the initial amount
 		err = m.client.Set(&memcache.Item{
 			Key:        key,
-			Value:      []byte("1"),
+			Value:      []byte(fmt.Sprintf("%d", amount)),
 			Expiration: int32(expiry.Seconds()),
 		})
 		if err != nil {
 			return 0, err
 		}
-		return 1, nil
+		return amount, nil
 	}
 	return int64(value), err
 }

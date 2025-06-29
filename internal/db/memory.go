@@ -27,8 +27,8 @@ func NewMemoryStorage() *MemoryStorage {
 	return storage
 }
 
-// Increment increments the counter for the given key and returns the current count
-func (m *MemoryStorage) Increment(ctx context.Context, key string, expiry time.Duration) (int64, error) {
+// Increment increments the counter for the given key by the specified amount and returns the new count
+func (m *MemoryStorage) Increment(ctx context.Context, key string, amount int64, expiry time.Duration) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	
@@ -38,8 +38,8 @@ func (m *MemoryStorage) Increment(ctx context.Context, key string, expiry time.D
 		delete(m.expiry, key)
 	}
 	
-	// Increment counter
-	count := m.data[key] + 1
+	// Increment counter by the specified amount
+	count := m.data[key] + amount
 	m.data[key] = count
 	m.expiry[key] = time.Now().Add(expiry)
 	

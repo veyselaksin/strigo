@@ -85,7 +85,7 @@ func (rl *RateLimiter) Consume(key string, points ...int64) (*Result, error) {
 	// If allowed, increment the counter
 	consumedPoints := currentCount
 	if allowed {
-		_, err = rl.storage.Increment(ctx, windowKey, rl.opts.GetDuration())
+		_, err = rl.storage.Increment(ctx, windowKey, consumePoints, rl.opts.GetDuration())
 		if err != nil {
 			return nil, fmt.Errorf("failed to increment counter: %w", err)
 		}
@@ -169,7 +169,9 @@ func (rl *RateLimiter) Block(key string, durationSec int64) error {
 	blockKey := fmt.Sprintf("%s:block", storageKey)
 	duration := time.Duration(durationSec) * time.Second
 	
-	_, err := rl.storage.Increment(ctx, blockKey, duration)
+	// Set a very high count to block all requests
+	blockAmount := rl.opts.Points + 1000
+	_, err := rl.storage.Increment(ctx, blockKey, blockAmount, duration)
 	return err
 }
 

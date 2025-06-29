@@ -10,14 +10,14 @@ intuitive API that provides detailed information about rate limit status.
 
 # Key Features
 
-   - Simple, intuitive API similar to rate-limiter-flexible
-   - Multiple rate limiting strategies (Token Bucket, Leaky Bucket, Fixed Window, Sliding Window)
-   - Flexible storage backends (Memory, Redis, Memcached)
-   - Point-based system for variable cost operations
-   - Detailed result information with standard HTTP headers
-   - Framework-agnostic design
-   - High performance with atomic operations
-   - Modular project structure for maintainable code
+  - Simple, intuitive API similar to rate-limiter-flexible
+  - Multiple rate limiting strategies (Token Bucket, Leaky Bucket, Fixed Window, Sliding Window)
+  - Flexible storage backends (Memory, Redis, Memcached)
+  - Point-based system for variable cost operations
+  - Detailed result information with standard HTTP headers
+  - Framework-agnostic design
+  - High performance with atomic operations
+  - Modular project structure for maintainable code
 
 # Basic Usage
 
@@ -173,16 +173,16 @@ main.go - Use in your application:
 
 The package supports multiple algorithms:
 
-   - **TokenBucket** (default): Classic token bucket algorithm
-   - **LeakyBucket**: Leaky bucket algorithm for smooth traffic
-   - **FixedWindow**: Fixed time window counting
-   - **SlidingWindow**: Sliding time window for more accurate limiting
+  - **TokenBucket** (default): Classic token bucket algorithm
+  - **LeakyBucket**: Leaky bucket algorithm for smooth traffic
+  - **FixedWindow**: Fixed time window counting
+  - **SlidingWindow**: Sliding time window for more accurate limiting
 
 # Storage Backends
 
-   - **Memory**: Built-in in-memory storage (default)
-   - **Redis**: Distributed rate limiting with Redis
-   - **Memcached**: Distributed rate limiting with Memcached
+  - **Memory**: Built-in in-memory storage (default)
+  - **Redis**: Distributed rate limiting with Redis
+  - **Memcached**: Distributed rate limiting with Memcached
 
 # Result Object
 
@@ -198,10 +198,10 @@ The Consume method returns detailed information:
 	}
 
 The result also provides standard HTTP headers via the Headers() method:
-   - X-RateLimit-Limit
-   - X-RateLimit-Remaining
-   - X-RateLimit-Reset
-   - Retry-After (when limited)
+  - X-RateLimit-Limit
+  - X-RateLimit-Remaining
+  - X-RateLimit-Reset
+  - Retry-After (when limited)
 
 # Additional Operations
 
@@ -219,13 +219,13 @@ Block a key for specific duration:
 
 For more examples and detailed documentation, visit:
 https://github.com/veyselaksin/strigo
-*/
-package strigo
 
-## Installation
+Installation:
 
 	go get github.com/veyselaksin/strigo/v2@v2.0.0
 
-## Import
+Import:
 
 	import "github.com/veyselaksin/strigo/v2"
+*/
+package strigo

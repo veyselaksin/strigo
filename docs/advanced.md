@@ -1,7 +1,8 @@
 ---
 layout: page
 title: Advanced Usage
-nav_order: 3
+nav_order: 4
+description: "Advanced patterns and production strategies for StriGO v2.0.0"
 ---
 
 # Advanced Usage
@@ -31,7 +32,7 @@ import (
     "log"
     "sync"
     "github.com/redis/go-redis/v9"
-    "github.com/veyselaksin/strigo"
+    "github.com/veyselaksin/strigo/v2"
 )
 
 type Manager struct {
@@ -106,7 +107,7 @@ Implement different limits based on user tiers:
 // pkg/ratelimit/tiers.go
 package ratelimit
 
-import "github.com/veyselaksin/strigo"
+import "github.com/veyselaksin/strigo/v2"
 
 type UserTier string
 
@@ -179,10 +180,11 @@ func (m *Manager) GetFileLimiter(tier UserTier) *strigo.RateLimiter {
 package middleware
 
 import (
+    "log"
     "strconv"
     "strings"
     "github.com/gofiber/fiber/v2"
-    "github.com/veyselaksin/strigo"
+    "github.com/veyselaksin/strigo/v2"
     "yourapp/pkg/ratelimit"
 )
 
@@ -295,7 +297,7 @@ import (
     "errors"
     "sync"
     "time"
-    "github.com/veyselaksin/strigo"
+    "github.com/veyselaksin/strigo/v2"
 )
 
 type CircuitBreaker struct {
@@ -403,7 +405,7 @@ import (
     "context"
     "log"
     "time"
-    "github.com/veyselaksin/strigo"
+    "github.com/veyselaksin/strigo/v2"
 )
 
 type Monitor struct {
@@ -542,7 +544,7 @@ package batch
 import (
     "context"
     "sync"
-    "github.com/veyselaksin/strigo"
+    "github.com/veyselaksin/strigo/v2"
 )
 
 type BatchProcessor struct {
@@ -617,7 +619,7 @@ import (
     "log"
     "sync"
     "time"
-    "github.com/veyselaksin/strigo"
+    "github.com/veyselaksin/strigo/v2"
 )
 
 type ResilientLimiter struct {
@@ -707,10 +709,11 @@ package testing
 
 import (
     "context"
+    "fmt"
     "sync"
     "sync/atomic"
     "time"
-    "github.com/veyselaksin/strigo"
+    "github.com/veyselaksin/strigo/v2"
 )
 
 type LoadTestConfig struct {
@@ -795,10 +798,11 @@ func RunLoadTest(config LoadTestConfig) *LoadTestResult {
 package security
 
 import (
+    "log"
     "net"
     "strings"
     "github.com/gofiber/fiber/v2"
-    "github.com/veyselaksin/strigo"
+    "github.com/veyselaksin/strigo/v2"
 )
 
 type SecurityConfig struct {
@@ -913,4 +917,4 @@ func isSuspiciousRequest(c *fiber.Ctx) bool {
   {: .danger }
 
 [Back to Home](./){: .btn .btn-blue .mr-2 }
-[Next: Best Practices](best-practices){: .btn .btn-purple }
+[Next: API Reference](api){: .btn .btn-purple }

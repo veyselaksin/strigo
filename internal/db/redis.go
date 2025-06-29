@@ -28,9 +28,9 @@ func NewRedisClient(address string) (*RedisClient, error) {
 	}, nil
 }
 
-func (r *RedisClient) Increment(ctx context.Context, key string, expiry time.Duration) (int64, error) {
+func (r *RedisClient) Increment(ctx context.Context, key string, amount int64, expiry time.Duration) (int64, error) {
 	pipe := r.client.Pipeline()
-	incr := pipe.Incr(ctx, key)
+	incr := pipe.IncrBy(ctx, key, amount)
 	pipe.Expire(ctx, key, expiry)
 
 	_, err := pipe.Exec(ctx)
