@@ -1,16 +1,121 @@
 ---
-layout: page
-title: Getting Started
-nav_order: 2
+layout: home
+title: Home
+nav_order: 1
+description: "StriGO v2.0.0 - High-performance rate limiter for Go applications"
+permalink: /
 ---
 
-# StriGO v2.0.0 Documentation
-
-{: .no_toc }
+# StriGO v2.0.0 - Production Ready Rate Limiter 🚀
 
 [![Version](https://img.shields.io/github/v/release/veyselaksin/strigo?include_prereleases)](https://github.com/veyselaksin/strigo/releases)
 [![Test Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)](https://github.com/veyselaksin/strigo/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/veyselaksin/strigo)](https://goreportcard.com/report/github.com/veyselaksin/strigo)
+
+**StriGO** is a high-performance, production-ready rate limiter for Go applications with Redis and Memcached support.
+
+{: .fs-6 .fw-300 }
+
+---
+
+## Installation
+
+```bash
+go get github.com/veyselaksin/strigo/v2@v2.0.0
+```
+
+## Quick Example
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+    "time"
+
+    "github.com/veyselaksin/strigo/v2"
+)
+
+func main() {
+    // Create rate limiter with Redis backend
+    limiter, err := strigo.NewRateLimiter(strigo.Options{
+        Backend: "redis",
+        RedisURL: "redis://localhost:6379",
+        MemoryFallback: true,
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer limiter.Close()
+
+    // Rate limit: 10 requests per minute
+    result, err := limiter.Consume("user:123", 1, time.Minute, 10)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    if result.Allowed {
+        fmt.Printf("Request allowed! Remaining: %d\n", result.Remaining)
+    } else {
+        fmt.Printf("Rate limited! Retry after: %v\n", result.RetryAfter)
+    }
+}
+```
+
+### Web Framework Integration
+
+```go
+package main
+
+import (
+    "time"
+
+    "github.com/veyselaksin/strigo/v2"
+    "github.com/gofiber/fiber/v2"
+)
+
+func main() {
+    // Create rate limiter
+    limiter, err := strigo.NewRateLimiter(strigo.Options{
+        Backend: "redis",
+        RedisURL: "redis://localhost:6379",
+        MemoryFallback: true,
+    })
+    if err != nil {
+        panic(err)
+    }
+    defer limiter.Close()
+
+    app := fiber.New()
+
+    // Rate limiting middleware
+    app.Use(func(c *fiber.Ctx) error {
+        userID := c.Get("X-User-ID", "anonymous")
+
+        result, err := limiter.Consume(userID, 1, time.Minute, 60)
+        if err != nil {
+            return c.Status(500).JSON(fiber.Map{"error": "Rate limiter error"})
+        }
+
+        if !result.Allowed {
+            return c.Status(429).JSON(fiber.Map{
+                "error": "Rate limit exceeded",
+                "retry_after": result.RetryAfter.Seconds(),
+            })
+        }
+
+        c.Set("X-RateLimit-Remaining", fmt.Sprintf("%d", result.Remaining))
+        return c.Next()
+    })
+
+    app.Get("/", func(c *fiber.Ctx) error {
+        return c.JSON(fiber.Map{"message": "Hello World!"})
+    })
+
+    app.Listen(":3000")
+}
+```
 
 ## Table of contents
 
@@ -18,16 +123,6 @@ nav_order: 2
 
 1. TOC
    {:toc}
-
-## Installation
-
-Add StriGO v2.0.0 to your project:
-
-```bash
-go get github.com/veyselaksin/strigo@v2.0.0
-```
-
-{: .highlight }
 
 ## ✨ What's New in v2.0.0
 

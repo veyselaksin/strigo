@@ -2,13 +2,14 @@
 layout: page
 title: Getting Started
 nav_order: 2
+description: "Complete guide to setting up and using StriGO v2.0.0"
 ---
 
-# Getting Started with StriGO v2.0.0
+# Getting Started with StriGO
+
+This guide will help you get started with StriGO v2.0.0, from installation to production deployment.
 
 {: .no_toc }
-
-Complete guide to implementing rate limiting in your Go applications
 
 ## Table of contents
 
@@ -17,12 +18,116 @@ Complete guide to implementing rate limiting in your Go applications
 1. TOC
    {:toc}
 
+---
+
 ## Installation
 
-Install StriGO v2.0.0 in your Go project:
+Install StriGO v2.0.0 using Go modules:
 
 ```bash
-go get github.com/veyselaksin/strigo@v2.0.0
+go get github.com/veyselaksin/strigo/v2@v2.0.0
+```
+
+Then import it in your Go code:
+
+```go
+import "github.com/veyselaksin/strigo/v2"
+```
+
+## Basic Usage
+
+### Simple Rate Limiting
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+    "time"
+
+    "github.com/veyselaksin/strigo/v2"
+)
+
+func main() {
+    // Create rate limiter with Redis backend
+    limiter, err := strigo.NewRateLimiter(strigo.Options{
+        Backend: "redis",
+        RedisURL: "redis://localhost:6379",
+        MemoryFallback: true,
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer limiter.Close()
+
+    // Rate limit: 10 requests per minute
+    result, err := limiter.Consume("user:123", 1, time.Minute, 10)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    if result.Allowed {
+        fmt.Printf("Request allowed! Remaining: %d\n", result.Remaining)
+    } else {
+        fmt.Printf("Rate limited! Retry after: %v\n", result.RetryAfter)
+    }
+}
+```
+
+### Web Framework Integration
+
+```go
+package main
+
+import (
+    "fmt"
+    "time"
+
+    "github.com/veyselaksin/strigo/v2"
+    "github.com/gofiber/fiber/v2"
+)
+
+func main() {
+    // Create rate limiter
+    limiter, err := strigo.NewRateLimiter(strigo.Options{
+        Backend: "redis",
+        RedisURL: "redis://localhost:6379",
+        MemoryFallback: true,
+    })
+    if err != nil {
+        panic(err)
+    }
+    defer limiter.Close()
+
+    app := fiber.New()
+
+    // Rate limiting middleware
+    app.Use(func(c *fiber.Ctx) error {
+        userID := c.Get("X-User-ID", "anonymous")
+
+        result, err := limiter.Consume(userID, 1, time.Minute, 60)
+        if err != nil {
+            return c.Status(500).JSON(fiber.Map{"error": "Rate limiter error"})
+        }
+
+        if !result.Allowed {
+            return c.Status(429).JSON(fiber.Map{
+                "error": "Rate limit exceeded",
+                "retry_after": result.RetryAfter.Seconds(),
+            })
+        }
+
+        c.Set("X-RateLimit-Remaining", fmt.Sprintf("%d", result.Remaining))
+        return c.Next()
+    })
+
+    app.Get("/", func(c *fiber.Ctx) error {
+        return c.JSON(fiber.Map{"message": "Hello World!"})
+    })
+
+    app.Listen(":3000")
+}
 ```
 
 ## Quick Start Examples
@@ -37,7 +142,7 @@ package main
 import (
     "fmt"
     "log"
-    "github.com/veyselaksin/strigo"
+    "github.com/veyselaksin/strigo/v2"
 )
 
 func main() {
@@ -80,7 +185,7 @@ import (
     "fmt"
     "log"
     "github.com/redis/go-redis/v9"
-    "github.com/veyselaksin/strigo"
+    "github.com/veyselaksin/strigo/v2"
 )
 
 func main() {
@@ -122,7 +227,7 @@ package main
 import (
     "fmt"
     "log"
-    "github.com/veyselaksin/strigo"
+    "github.com/veyselaksin/strigo/v2"
 )
 
 func main() {
@@ -180,7 +285,7 @@ package main
 import (
     "log"
     "github.com/redis/go-redis/v9"
-    "github.com/veyselaksin/strigo"
+    "github.com/veyselaksin/strigo/v2"
 )
 
 var (
@@ -259,7 +364,7 @@ import (
     "strconv"
     "time"
     "github.com/gofiber/fiber/v2"
-    "github.com/veyselaksin/strigo"
+    "github.com/veyselaksin/strigo/v2"
 )
 
 // Rate limiting middleware

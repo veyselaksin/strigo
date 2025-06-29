@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/veyselaksin/strigo"
+	"github.com/veyselaksin/strigo/v2"
 )
 
 func main() {

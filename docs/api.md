@@ -1,14 +1,15 @@
 ---
 layout: page
 title: API Reference
-nav_order: 4
+nav_order: 3
+description: "Complete API documentation for StriGO v2.0.0"
 ---
 
 # API Reference
 
-{: .no_toc }
+Complete reference for all StriGO v2.0.0 functions, types, and configurations.
 
-Complete API documentation for StriGO v2.0.0
+{: .no_toc }
 
 ## Table of contents
 
@@ -16,6 +17,14 @@ Complete API documentation for StriGO v2.0.0
 
 1. TOC
    {:toc}
+
+---
+
+## Package Import
+
+```go
+import "github.com/veyselaksin/strigo/v2"
+```
 
 ## Core Types
 
@@ -287,7 +296,7 @@ import (
     "time"
 
     "github.com/redis/go-redis/v9"
-    "github.com/veyselaksin/strigo"
+    "github.com/veyselaksin/strigo/v2"
 )
 
 func main() {

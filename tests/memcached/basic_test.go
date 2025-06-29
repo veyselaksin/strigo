@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/veyselaksin/strigo/tests/helpers"
+	"github.com/veyselaksin/strigo/v2/tests/helpers"
 
 	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/stretchr/testify/assert"

@@ -32,7 +32,7 @@ StriGO is a comprehensive and flexible rate limiter for Go applications, inspire
 ### 📥 Installation
 
 ```bash
-go get github.com/veyselaksin/strigo
+go get github.com/veyselaksin/strigo/v2@v2.0.0
 ```
 
 ## 💡 Basic Usage
@@ -46,7 +46,7 @@ import (
     "fmt"
     "log"
 
-    "github.com/veyselaksin/strigo"
+    "github.com/veyselaksin/strigo/v2"
 )
 
 func main() {
@@ -82,7 +82,7 @@ func main() {
 ```go
 import (
     "github.com/redis/go-redis/v9"
-    "github.com/veyselaksin/strigo"
+    "github.com/veyselaksin/strigo/v2"
 )
 
 func main() {
@@ -149,7 +149,7 @@ package main
 import (
     "log"
     "github.com/redis/go-redis/v9"
-    "github.com/veyselaksin/strigo"
+    "github.com/veyselaksin/strigo/v2"
 )
 
 var (
@@ -228,7 +228,7 @@ import (
     "strconv"
     "time"
     "github.com/gofiber/fiber/v2"
-    "github.com/veyselaksin/strigo"
+    "github.com/veyselaksin/strigo/v2"
 )
 
 // Rate limiting middleware

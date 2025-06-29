@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/veyselaksin/strigo/tests/helpers"
+	"github.com/veyselaksin/strigo/v2/tests/helpers"
 )
 
 func TestRedisBasicOperations(t *testing.T) {

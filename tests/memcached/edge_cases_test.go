@@ -9,7 +9,7 @@ import (
 	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/veyselaksin/strigo"
+	"github.com/veyselaksin/strigo/v2"
 )
 
 func TestMemcachedConnectionFailure(t *testing.T) {

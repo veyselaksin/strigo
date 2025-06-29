@@ -10,7 +10,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/veyselaksin/strigo"
+	"github.com/veyselaksin/strigo/v2"
 )
 
 func setupRedisForPerformance(t *testing.T) (*strigo.RateLimiter, func()) {

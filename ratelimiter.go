@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/veyselaksin/strigo/internal/db"
+	"github.com/veyselaksin/strigo/v2/internal/db"
 )
 
 // RateLimiter provides rate limiting functionality similar to rate-limiter-flexible
