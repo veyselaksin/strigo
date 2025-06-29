@@ -132,143 +132,18 @@ func main() {
 
 ## Quick Start Examples
 
-### 1. Basic Memory Rate Limiter
 
-Start with a simple in-memory rate limiter:
+### 📋 Prerequisites
 
-```go
-package main
+- 🔧 Go 1.22.3 or later
+- 🐳 Docker and Docker Compose
+- 📦 Redis
+- 💾 Memcached
 
-import (
-    "fmt"
-    "log"
-    "github.com/veyselaksin/strigo/v2"
-)
+### 📥 Installation
 
-func main() {
-    // Create rate limiter: 5 requests per 10 seconds
-    limiter, err := strigo.New(&strigo.Options{
-        Points:   5,  // 5 requests
-        Duration: 10, // per 10 seconds
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer limiter.Close()
-
-    // Test the rate limiter
-    for i := 1; i <= 7; i++ {
-        result, err := limiter.Consume("user:123", 1)
-        if err != nil {
-            log.Fatal(err)
-        }
-
-        if result.Allowed {
-            fmt.Printf("Request %d: ✅ Allowed (remaining: %d)\n",
-                i, result.RemainingPoints)
-        } else {
-            fmt.Printf("Request %d: ❌ Rate limited (retry in %dms)\n",
-                i, result.MsBeforeNext)
-        }
-    }
-}
-```
-
-### 2. Redis-Based Rate Limiter
-
-For distributed applications, use Redis:
-
-```go
-package main
-
-import (
-    "fmt"
-    "log"
-    "github.com/redis/go-redis/v9"
-    "github.com/veyselaksin/strigo/v2"
-)
-
-func main() {
-    // Create Redis client
-    redisClient := redis.NewClient(&redis.Options{
-        Addr: "localhost:6379",
-    })
-
-    // Create rate limiter with Redis
-    limiter, err := strigo.New(&strigo.Options{
-        Points:      100,           // 100 requests
-        Duration:    60,            // per minute
-        KeyPrefix:   "myapp",       // namespace
-        StoreClient: redisClient,   // Redis storage
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer limiter.Close()
-
-    // Test API user
-    result, err := limiter.Consume("api:user456", 5)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    fmt.Printf("API Request: %v (remaining: %d)\n",
-        result.Allowed, result.RemainingPoints)
-}
-```
-
-### 3. Variable Point Consumption
-
-Different operations can consume different amounts of points:
-
-```go
-package main
-
-import (
-    "fmt"
-    "log"
-    "github.com/veyselaksin/strigo/v2"
-)
-
-func main() {
-    // 100 points per minute
-    limiter, err := strigo.New(&strigo.Options{
-        Points:   100,
-        Duration: 60,
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer limiter.Close()
-
-    // Define operation costs
-    operations := map[string]int64{
-        "read_profile":     1,  // Light operation
-        "update_profile":   5,  // Medium operation
-        "upload_image":     10, // Heavy operation
-        "process_video":    25, // Very heavy operation
-        "generate_report":  50, // Extremely heavy operation
-    }
-
-    // Test different operations
-    userKey := "user:premium123"
-
-    for operation, cost := range operations {
-        result, err := limiter.Consume(userKey, cost)
-        if err != nil {
-            log.Printf("Error with %s: %v", operation, err)
-            continue
-        }
-
-        if result.Allowed {
-            fmt.Printf("✅ %s allowed (cost: %d, remaining: %d)\n",
-                operation, cost, result.RemainingPoints)
-        } else {
-            fmt.Printf("❌ %s blocked (cost: %d, retry in %ds)\n",
-                operation, cost, result.MsBeforeNext/1000)
-        }
-    }
-}
+```bash
+go get github.com/veyselaksin/strigo/v2@v2.0.0
 ```
 
 ## Web Framework Integration
@@ -619,3 +494,5 @@ Choose your storage backend based on your scaling needs:
 - **Memcached**: Multi-instance with maximum performance
 
 [Next: API Reference](api){: .btn .btn-purple }
+
+*Last synced with README.md: 2025-06-29 15:15:49 UTC*

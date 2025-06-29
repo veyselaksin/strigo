@@ -20,6 +20,7 @@ permalink: /
 
 ## Installation
 
+
 ```bash
 go get github.com/veyselaksin/strigo/v2@v2.0.0
 ```
@@ -302,3 +303,5 @@ _Tested on Apple M3, Go 1.22.3_
 
 [View on GitHub](https://github.com/veyselaksin/strigo){: .btn .btn-purple .mr-2 }
 [API Reference](api){: .btn .btn-blue }
+
+*Last synced with README.md: 2025-06-29 15:15:49 UTC*
