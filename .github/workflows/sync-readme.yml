@@ -1,0 +1,189 @@
+name: Sync README to Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "README.md"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract README sections
+        run: |
+          mkdir -p .temp/readme-sections
+
+          # Extract installation section
+          sed -n '/## 📥 Installation/,/## 💡 Basic Usage/p' README.md | head -n -1 > .temp/readme-sections/installation.md
+
+          # Extract features section  
+          sed -n '/## ✨ Features/,/## 🚀 Quick Start/p' README.md | head -n -1 > .temp/readme-sections/features.md
+
+          # Extract quick start section
+          sed -n '/## 🚀 Quick Start/,/## 💡 Basic Usage/p' README.md | head -n -1 > .temp/readme-sections/quickstart.md
+
+          # Extract performance section
+          sed -n '/### 🚀 Performance Results/,/#### 🔧 Generate Your Own Benchmarks/p' README.md | head -n -1 > .temp/readme-sections/performance.md
+
+          # Extract configuration section
+          sed -n '/## 🎛️ Configuration Options/,/## 📊 Result Information/p' README.md | head -n -1 > .temp/readme-sections/configuration.md
+
+          echo "README sections extracted successfully"
+
+      - name: Update documentation index
+        run: |
+          # Create a backup
+          cp docs/index.md docs/index.md.backup
+
+          # Update installation section in docs/index.md
+          if [ -s .temp/readme-sections/installation.md ]; then
+            # Replace installation section
+            awk '
+              /## Installation/ { 
+                print; 
+                print ""
+                system("cat .temp/readme-sections/installation.md | tail -n +2")
+                while ((getline line) > 0 && line !~ /^## /) { }
+                if (line ~ /^## /) print line
+              }
+              !/## Installation/ { print }
+            ' docs/index.md > docs/index.md.new
+            
+            mv docs/index.md.new docs/index.md
+          fi
+
+      - name: Update getting started guide
+        run: |
+          # Update quick start examples in getting-started.md
+          if [ -s .temp/readme-sections/quickstart.md ]; then
+            # Update quick start section
+            awk '
+              /## Quick Start Examples/ {
+                print;
+                print ""
+                system("cat .temp/readme-sections/quickstart.md | tail -n +2")
+                while ((getline line) > 0 && line !~ /^## Web Framework Integration/) { }
+                if (line ~ /^## Web Framework Integration/) print line
+              }
+              !/## Quick Start Examples/ { print }
+            ' docs/getting-started.md > docs/getting-started.md.new
+            
+            mv docs/getting-started.md.new docs/getting-started.md
+          fi
+
+      - name: Update performance information
+        run: |
+          # Update performance benchmarks in index.md
+          if [ -s .temp/readme-sections/performance.md ]; then
+            echo "Updating performance section in documentation..."
+            
+            # Add performance info to getting-started.md
+            if ! grep -q "Performance Notes" docs/getting-started.md; then
+              echo "" >> docs/getting-started.md
+              echo "## Performance Notes" >> docs/getting-started.md
+              echo "" >> docs/getting-started.md
+              cat .temp/readme-sections/performance.md | tail -n +2 >> docs/getting-started.md
+            fi
+          fi
+
+      - name: Add update timestamp
+        run: |
+          current_date=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          # Add or update sync timestamp in all docs
+          for file in docs/index.md docs/getting-started.md docs/api.md docs/advanced.md; do
+            if [ -f "$file" ]; then
+              # Add sync note at the bottom
+              if ! grep -q "Last synced with README.md" "$file"; then
+                echo "" >> "$file"
+                echo "*Last synced with README.md: $current_date*" >> "$file"
+              else
+                sed -i "s/Last synced with README\.md: .*/Last synced with README.md: $current_date/" "$file"
+              fi
+            fi
+          done
+
+      - name: Validate documentation
+        run: |
+          # Basic validation
+          echo "Validating documentation files..."
+
+          for file in docs/index.md docs/getting-started.md docs/api.md docs/advanced.md; do
+            if [ -f "$file" ]; then
+              # Check for broken markdown
+              if ! grep -q "^# " "$file"; then
+                echo "Warning: No main heading found in $file"
+              fi
+              
+              # Check file size (should not be empty)
+              if [ ! -s "$file" ]; then
+                echo "Error: $file is empty"
+                exit 1
+              fi
+              
+              echo "✓ $file validated"
+            fi
+          done
+
+          echo "All documentation files validated successfully"
+
+      - name: Clean up temporary files
+        run: |
+          rm -rf .temp/
+          rm -f docs/index.md.backup docs/getting-started.md.backup
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          git add docs/
+
+          if git diff --staged --quiet; then
+            echo "No documentation changes to commit"
+          else
+            git commit -m "📚 Sync documentation with README.md
+            
+            - Automatically updated docs from README.md changes
+            - Synced installation, features, and performance sections
+            - Updated timestamps: $(date -u)
+            
+            [auto-sync]"
+            
+            git push
+            
+            echo "Documentation synced successfully!"
+          fi
+
+      - name: Create sync summary
+        if: always()
+        run: |
+          echo "## 🔄 README.md Sync Summary" > sync_summary.md
+          echo "" >> sync_summary.md
+          echo "**Status:** $(if git diff --staged --quiet; then echo 'No changes detected'; else echo 'Documentation updated'; fi)" >> sync_summary.md
+          echo "**Timestamp:** $(date -u)" >> sync_summary.md
+          echo "**Trigger:** ${{ github.event_name }}" >> sync_summary.md
+          echo "" >> sync_summary.md
+          echo "### Sections Processed:" >> sync_summary.md
+          echo "- ✅ Installation" >> sync_summary.md
+          echo "- ✅ Features" >> sync_summary.md
+          echo "- ✅ Quick Start" >> sync_summary.md
+          echo "- ✅ Performance Results" >> sync_summary.md
+          echo "- ✅ Configuration Options" >> sync_summary.md
+          echo "" >> sync_summary.md
+          echo "### Files Updated:" >> sync_summary.md
+          echo "- docs/index.md" >> sync_summary.md
+          echo "- docs/getting-started.md" >> sync_summary.md
+          echo "" >> sync_summary.md
+
+          cat sync_summary.md

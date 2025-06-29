@@ -1,59 +1,321 @@
-# Getting Started with StriGo
+---
+layout: page
+title: Getting Started
+nav_order: 2
+---
+
+# Getting Started with StriGO v2.0.0
+
+{: .no_toc }
+
+Complete guide to implementing rate limiting in your Go applications
+
+## Table of contents
+
+{: .no_toc .text-delta }
+
+1. TOC
+   {:toc}
 
 ## Installation
 
-To add StriGo to your project, run:
+Install StriGO v2.0.0 in your Go project:
 
 ```bash
-go get github.com/veyselaksin/strigo
+go get github.com/veyselaksin/strigo@v2.0.0
 ```
 
-## Basic Usage
+## Quick Start Examples
 
-### Standalone Usage
+### 1. Basic Memory Rate Limiter
 
-Here's a simple example showing how to use StriGo directly:
+Start with a simple in-memory rate limiter:
 
 ```go
 package main
 
 import (
+    "fmt"
     "log"
     "github.com/veyselaksin/strigo"
 )
 
 func main() {
-    // Create a new rate limiter with Redis backend
-    limiter, err := strigo.NewLimiter(strigo.LimiterConfig{
-        Backend: strigo.Redis,
-        Address: "localhost:6379",
-        Rules: []strigo.RuleConfig{
-            {
-                Pattern:  "api_requests",
-                Strategy: strigo.TokenBucket,
-                Period:   strigo.MINUTELY,
-                Limit:    100,
-            },
-        },
-        Prefix: "myapp",
+    // Create rate limiter: 5 requests per 10 seconds
+    limiter, err := strigo.New(&strigo.Options{
+        Points:   5,  // 5 requests
+        Duration: 10, // per 10 seconds
     })
     if err != nil {
         log.Fatal(err)
     }
     defer limiter.Close()
 
-    // Check if request is allowed
-    if limiter.Allow("user123") {
-        // Handle request
-    } else {
-        // Rate limit exceeded
+    // Test the rate limiter
+    for i := 1; i <= 7; i++ {
+        result, err := limiter.Consume("user:123", 1)
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        if result.Allowed {
+            fmt.Printf("Request %d: ✅ Allowed (remaining: %d)\n",
+                i, result.RemainingPoints)
+        } else {
+            fmt.Printf("Request %d: ❌ Rate limited (retry in %dms)\n",
+                i, result.MsBeforeNext)
+        }
     }
 }
 ```
 
-### Web Framework Integration
+### 2. Redis-Based Rate Limiter
 
-StriGo integrates seamlessly with the Fiber web framework:
+For distributed applications, use Redis:
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+    "github.com/redis/go-redis/v9"
+    "github.com/veyselaksin/strigo"
+)
+
+func main() {
+    // Create Redis client
+    redisClient := redis.NewClient(&redis.Options{
+        Addr: "localhost:6379",
+    })
+
+    // Create rate limiter with Redis
+    limiter, err := strigo.New(&strigo.Options{
+        Points:      100,           // 100 requests
+        Duration:    60,            // per minute
+        KeyPrefix:   "myapp",       // namespace
+        StoreClient: redisClient,   // Redis storage
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer limiter.Close()
+
+    // Test API user
+    result, err := limiter.Consume("api:user456", 5)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    fmt.Printf("API Request: %v (remaining: %d)\n",
+        result.Allowed, result.RemainingPoints)
+}
+```
+
+### 3. Variable Point Consumption
+
+Different operations can consume different amounts of points:
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+    "github.com/veyselaksin/strigo"
+)
+
+func main() {
+    // 100 points per minute
+    limiter, err := strigo.New(&strigo.Options{
+        Points:   100,
+        Duration: 60,
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer limiter.Close()
+
+    // Define operation costs
+    operations := map[string]int64{
+        "read_profile":     1,  // Light operation
+        "update_profile":   5,  // Medium operation
+        "upload_image":     10, // Heavy operation
+        "process_video":    25, // Very heavy operation
+        "generate_report":  50, // Extremely heavy operation
+    }
+
+    // Test different operations
+    userKey := "user:premium123"
+
+    for operation, cost := range operations {
+        result, err := limiter.Consume(userKey, cost)
+        if err != nil {
+            log.Printf("Error with %s: %v", operation, err)
+            continue
+        }
+
+        if result.Allowed {
+            fmt.Printf("✅ %s allowed (cost: %d, remaining: %d)\n",
+                operation, cost, result.RemainingPoints)
+        } else {
+            fmt.Printf("❌ %s blocked (cost: %d, retry in %ds)\n",
+                operation, cost, result.MsBeforeNext/1000)
+        }
+    }
+}
+```
+
+## Web Framework Integration
+
+### Fiber Web Framework
+
+Create a modular structure with global limiters:
+
+#### Step 1: Create `limiter.go`
+
+```go
+package main
+
+import (
+    "log"
+    "github.com/redis/go-redis/v9"
+    "github.com/veyselaksin/strigo"
+)
+
+var (
+    // Global rate limiter instances
+    ApiLimiter    *strigo.RateLimiter
+    AuthLimiter   *strigo.RateLimiter
+    UploadLimiter *strigo.RateLimiter
+)
+
+func InitializeLimiters() {
+    redisClient := redis.NewClient(&redis.Options{
+        Addr: "localhost:6379",
+    })
+
+    var err error
+
+    // API Rate Limiter - 100 requests per minute
+    ApiLimiter, err = strigo.New(&strigo.Options{
+        Points:      100,
+        Duration:    60,
+        KeyPrefix:   "api",
+        StoreClient: redisClient,
+    })
+    if err != nil {
+        log.Printf("⚠️ Redis not available for API limiter: %v", err)
+        // Fallback to memory
+        ApiLimiter, _ = strigo.New(&strigo.Options{
+            Points:    100,
+            Duration:  60,
+            KeyPrefix: "api",
+        })
+    }
+
+    // Auth Rate Limiter - 5 attempts per 5 minutes
+    AuthLimiter, err = strigo.New(&strigo.Options{
+        Points:      5,
+        Duration:    300,
+        KeyPrefix:   "auth",
+        StoreClient: redisClient,
+    })
+    if err != nil {
+        log.Printf("⚠️ Redis not available for auth limiter: %v", err)
+        AuthLimiter, _ = strigo.New(&strigo.Options{
+            Points:    5,
+            Duration:  300,
+            KeyPrefix: "auth",
+        })
+    }
+
+    // Upload Rate Limiter - 10 uploads per hour
+    UploadLimiter, err = strigo.New(&strigo.Options{
+        Points:      10,
+        Duration:    3600,
+        KeyPrefix:   "upload",
+        StoreClient: redisClient,
+    })
+    if err != nil {
+        log.Printf("⚠️ Redis not available for upload limiter: %v", err)
+        UploadLimiter, _ = strigo.New(&strigo.Options{
+            Points:    10,
+            Duration:  3600,
+            KeyPrefix: "upload",
+        })
+    }
+
+    log.Println("✅ Rate limiters initialized")
+}
+```
+
+#### Step 2: Create `middleware.go`
+
+```go
+package main
+
+import (
+    "strconv"
+    "time"
+    "github.com/gofiber/fiber/v2"
+    "github.com/veyselaksin/strigo"
+)
+
+// Rate limiting middleware
+func rateLimitMiddleware(limiter *strigo.RateLimiter, points ...int64) fiber.Handler {
+    return func(c *fiber.Ctx) error {
+        key := getUserKey(c)
+
+        // Default to 1 point if not specified
+        consumePoints := int64(1)
+        if len(points) > 0 {
+            consumePoints = points[0]
+        }
+
+        result, err := limiter.Consume(key, consumePoints)
+        if err != nil {
+            return c.Status(500).JSON(fiber.Map{
+                "error": "Rate limiter error",
+            })
+        }
+
+        // Set rate limit headers
+        headers := result.Headers()
+        for name, value := range headers {
+            c.Set(name, value)
+        }
+
+        if !result.Allowed {
+            return c.Status(429).JSON(fiber.Map{
+                "error":             "Rate limit exceeded",
+                "retryAfterSeconds": result.MsBeforeNext / 1000,
+                "retryAfterMs":      result.MsBeforeNext,
+                "limit":             result.TotalHits,
+                "consumed":          result.ConsumedPoints,
+                "remaining":         result.RemainingPoints,
+                "resetTime":         time.Now().Add(time.Duration(result.MsBeforeNext) * time.Millisecond).Unix(),
+            })
+        }
+
+        c.Set("X-RateLimit-Points-Consumed", strconv.FormatInt(consumePoints, 10))
+        return c.Next()
+    }
+}
+
+func getUserKey(c *fiber.Ctx) string {
+    // Priority: User ID > API Key > IP
+    if userID := c.Get("X-User-ID"); userID != "" {
+        return "user:" + userID
+    }
+    if apiKey := c.Get("X-API-Key"); apiKey != "" {
+        return "apikey:" + apiKey
+    }
+    return "ip:" + c.IP()
+}
+```
+
+#### Step 3: Create `main.go`
 
 ```go
 package main
@@ -61,152 +323,194 @@ package main
 import (
     "log"
     "github.com/gofiber/fiber/v2"
-    "github.com/veyselaksin/strigo"
-    fiberMiddleware "github.com/veyselaksin/strigo/middleware/fiber"
 )
 
 func main() {
     app := fiber.New()
 
-    // Create rate limiter manager
-    manager := strigo.NewManager(strigo.Redis, "localhost:6379")
-    defer manager.Close()
+    // Initialize rate limiters
+    InitializeLimiters()
 
-    // Apply rate limiting middleware
-    app.Use(fiberMiddleware.RateLimitHandler(manager, func(c *fiber.Ctx) []strigo.RuleConfig {
-        return []strigo.RuleConfig{
-            {
-                Pattern:  "api_limit",
-                Strategy: strigo.TokenBucket,
-                Period:   strigo.MINUTELY,
-                Limit:    100,
-            },
-        }
-    }))
+    // API routes with different limits
+    api := app.Group("/api")
+    api.Get("/users", rateLimitMiddleware(ApiLimiter, 1), getUsersHandler)
+    api.Get("/analytics", rateLimitMiddleware(ApiLimiter, 5), getAnalyticsHandler)  // More expensive
+    api.Get("/export", rateLimitMiddleware(ApiLimiter, 10), getExportHandler)      // Very expensive
 
-    app.Get("/api", func(c *fiber.Ctx) error {
-        return c.JSON(fiber.Map{"message": "Success"})
-    })
+    // Authentication with stricter limits
+    auth := app.Group("/auth")
+    auth.Post("/login", rateLimitMiddleware(AuthLimiter, 1), loginHandler)
+    auth.Post("/reset", rateLimitMiddleware(AuthLimiter, 2), resetHandler)
 
+    // File uploads
+    app.Post("/upload", rateLimitMiddleware(UploadLimiter, 1), uploadHandler)
+
+    log.Println("🚀 Server starting on :3000")
     log.Fatal(app.Listen(":3000"))
 }
-```
 
-## Storage Backends
+// Handler functions
+func getUsersHandler(c *fiber.Ctx) error {
+    return c.JSON(fiber.Map{"users": []string{"user1", "user2"}})
+}
 
-### Redis Configuration
+func getAnalyticsHandler(c *fiber.Ctx) error {
+    return c.JSON(fiber.Map{"analytics": "expensive data processing"})
+}
 
-```go
-limiter, err := strigo.NewLimiter(strigo.LimiterConfig{
-    Backend: strigo.Redis,
-    Address: "localhost:6379",
-    Rules: []strigo.RuleConfig{
-        {
-            Pattern:  "api_requests",
-            Strategy: strigo.TokenBucket,
-            Period:   strigo.MINUTELY,
-            Limit:    100,
-        },
-    },
-})
-```
+func getExportHandler(c *fiber.Ctx) error {
+    return c.JSON(fiber.Map{"export": "very expensive operation"})
+}
 
-### Memcached Configuration
+func loginHandler(c *fiber.Ctx) error {
+    return c.JSON(fiber.Map{"token": "jwt-token-here"})
+}
 
-```go
-limiter, err := strigo.NewLimiter(strigo.LimiterConfig{
-    Backend: strigo.Memcached,
-    Address: "localhost:11211",
-    Rules: []strigo.RuleConfig{
-        {
-            Pattern:  "api_requests",
-            Strategy: strigo.TokenBucket,
-            Period:   strigo.MINUTELY,
-            Limit:    100,
-        },
-    },
-})
-```
+func resetHandler(c *fiber.Ctx) error {
+    return c.JSON(fiber.Map{"message": "password reset email sent"})
+}
 
-## Rate Limiting Strategies
-
-StriGo supports multiple rate limiting strategies:
-
-- **Token Bucket (Default)**: Simple counter-based rate limiting
-- **Leaky Bucket**: Smooths out request processing
-- **Fixed Window**: Resets counter at fixed intervals
-- **Sliding Window**: More accurate rate limiting over time
-
-Example with different strategies:
-
-```go
-rules := []strigo.RuleConfig{
-    {
-        Pattern:  "token_bucket_rule",
-        Strategy: strigo.TokenBucket,
-        Period:   strigo.MINUTELY,
-        Limit:    100,
-    },
-    {
-        Pattern:  "sliding_window_rule",
-        Strategy: strigo.SlidingWindow,
-        Period:   strigo.HOURLY,
-        Limit:    1000,
-    },
+func uploadHandler(c *fiber.Ctx) error {
+    return c.JSON(fiber.Map{"uploaded": true, "size": "2.3MB"})
 }
 ```
 
-## Time Windows
+## Advanced Usage Patterns
 
-Available time windows for rate limiting:
-
-- `SECONDLY`: Per second
-- `MINUTELY`: Per minute
-- `HOURLY`: Per hour
-- `DAILY`: Per day
-- `WEEKLY`: Per week
-- `MONTHLY`: Per month (30 days)
-- `YEARLY`: Per year (365 days)
-
-Example with multiple time windows:
+### 1. Multiple Rate Limiters
 
 ```go
-rules := []strigo.RuleConfig{
-    {
-        Pattern:  "short_term",
-        Strategy: strigo.TokenBucket,
-        Period:   strigo.MINUTELY,
-        Limit:    100,
-    },
-    {
-        Pattern:  "long_term",
-        Strategy: strigo.TokenBucket,
-        Period:   strigo.DAILY,
-        Limit:    10000,
-    },
+// Different limiters for different use cases
+apiLimiter, _ := strigo.New(&strigo.Options{Points: 1000, Duration: 3600})  // 1000/hour
+authLimiter, _ := strigo.New(&strigo.Options{Points: 5, Duration: 300})     // 5 attempts/5min
+uploadLimiter, _ := strigo.New(&strigo.Options{Points: 10, Duration: 3600}) // 10 uploads/hour
+```
+
+### 2. Check Status Without Consuming
+
+```go
+// Check current status without consuming points
+result, err := limiter.Get("user:123")
+if result != nil {
+    fmt.Printf("Usage: %d/%d points used\n",
+        result.ConsumedPoints, result.TotalHits)
 }
 ```
 
-## Error Handling
-
-Always handle errors appropriately:
+### 3. Manual Blocking
 
 ```go
-limiter, err := strigo.NewLimiter(config)
+// Block a user for 5 minutes (300 seconds)
+err := limiter.Block("user:spam123", 300)
 if err != nil {
-    log.Fatalf("Failed to create rate limiter: %v", err)
+    log.Printf("Failed to block user: %v", err)
 }
-defer limiter.Close()
+```
 
-// Check rate limit
-if !limiter.Allow("user123") {
-    // Handle rate limit exceeded
-    return errors.New("rate limit exceeded")
+### 4. Reset Rate Limits
+
+```go
+// Reset rate limit for a key (admin operation)
+err := limiter.Reset("user:123")
+if err != nil {
+    log.Printf("Failed to reset limit: %v", err)
+}
+```
+
+## Testing Your Rate Limiter
+
+### Basic Test Script
+
+```bash
+#!/bin/bash
+# test-rate-limit.sh
+
+echo "Testing rate limiter..."
+
+for i in {1..8}; do
+    echo "Request $i:"
+    curl -s "http://localhost:3000/api/users" | jq -r '.error // "Success"'
+    sleep 1
+done
+```
+
+### Load Testing
+
+```bash
+# Install hey for load testing
+go install github.com/rakyll/hey@latest
+
+# Test with 100 requests, 10 concurrent
+hey -n 100 -c 10 http://localhost:3000/api/users
+```
+
+## Error Handling Best Practices
+
+```go
+func handleRateLimit(limiter *strigo.RateLimiter, key string, points int64) error {
+    result, err := limiter.Consume(key, points)
+    if err != nil {
+        // Log storage errors but don't block requests
+        log.Printf("Rate limiter error: %v", err)
+        return nil // Allow request to proceed
+    }
+
+    if !result.Allowed {
+        return fmt.Errorf("rate limit exceeded, retry in %d seconds",
+            result.MsBeforeNext/1000)
+    }
+
+    return nil
+}
+```
+
+## Configuration Tips
+
+### Production Configuration
+
+```go
+// Production settings
+opts := &strigo.Options{
+    Points:        1000,         // Higher limits for production
+    Duration:      3600,         // 1 hour window
+    KeyPrefix:     "prod-api",   // Environment-specific prefix
+    BlockDuration: 900,          // 15 minutes block
+    Strategy:      strigo.TokenBucket,
+    StoreClient:   redisClient,  // Always use Redis in production
+}
+```
+
+### Development Configuration
+
+```go
+// Development settings
+opts := &strigo.Options{
+    Points:   10000,     // Very high limits for testing
+    Duration: 60,        // Short windows for quick testing
+    KeyPrefix: "dev-api",
+    // No StoreClient = memory storage for simplicity
 }
 ```
 
 ## Next Steps
 
-- Check out the [Advanced Usage Guide](advanced.md) for more complex scenarios
-- See the [API Reference](api.md) for detailed documentation
-- Visit our [GitHub repository](https://github.com/veyselaksin/strigo) for the latest updates
+- [API Reference](api) - Complete API documentation
+- [Advanced Usage](advanced) - Complex patterns and strategies
+- [Best Practices](best-practices) - Production recommendations
+- [Docker Setup](docker) - Container configuration
+
+## Performance Notes
+
+StriGO v2.0.0 delivers exceptional performance:
+
+- **Memory**: No network overhead, instant operations
+- **Redis**: 109K+ req/s concurrent performance
+- **Memcached**: 89K+ req/s concurrent performance
+
+Choose your storage backend based on your scaling needs:
+
+- **Memory**: Single instance applications
+- **Redis**: Multi-instance with persistence needs
+- **Memcached**: Multi-instance with maximum performance
+
+[Next: API Reference](api){: .btn .btn-purple }

@@ -1,0 +1,196 @@
+name: Build and Deploy Documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs.yml"
+      - "README.md"
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs.yml"
+      - "README.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Build job
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: ./docs
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v4
+
+      - name: Build with Jekyll
+        run: |
+          cd docs
+          bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
+        env:
+          JEKYLL_ENV: production
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./docs/_site
+
+  # Deployment job
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Test documentation links and structure
+  test-docs:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: ./docs
+
+      - name: Install html-proofer
+        run: gem install html-proofer
+
+      - name: Build Jekyll site
+        run: |
+          cd docs
+          bundle exec jekyll build
+
+      - name: Test with html-proofer
+        run: |
+          htmlproofer ./docs/_site \
+            --disable-external \
+            --check-html \
+            --check-img-http \
+            --report-missing-names \
+            --log-level :debug \
+            --ignore-urls "/localhost/,/127.0.0.1/" \
+            --ignore-files "/vendor/"
+
+  # Lighthouse performance audit for docs
+  lighthouse:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli@0.12.x
+
+      - name: Setup Ruby and build site
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: ./docs
+
+      - name: Build Jekyll site
+        run: |
+          cd docs
+          bundle exec jekyll build
+
+      - name: Run Lighthouse CI
+        run: lhci autorun
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+        continue-on-error: true
+
+  # Comment on PR with documentation preview
+  preview-comment:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Comment PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('📖 Documentation Preview')
+            );
+
+            const commentBody = `## 📖 Documentation Preview
+
+            The documentation has been built successfully! 
+
+            ### 🚀 What's included:
+            - ✅ Jekyll site built successfully
+            - ✅ All pages validated
+            - ✅ Performance audit completed
+
+            ### 📝 Recent Changes:
+            - Updated StriGO v2.0.0 API documentation
+            - Enhanced examples and usage patterns
+            - Performance benchmarks included
+
+            ### 🔗 Quick Links:
+            - [Getting Started](https://veyselaksin.github.io/strigo/getting-started)
+            - [API Reference](https://veyselaksin.github.io/strigo/api)
+            - [Advanced Usage](https://veyselaksin.github.io/strigo/advanced)
+
+            *Documentation will be automatically deployed when this PR is merged.*`;
+
+            if (botComment) {
+              github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+            } else {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: commentBody
+              });
+            }

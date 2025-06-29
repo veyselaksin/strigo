@@ -1,0 +1,180 @@
+name: Manual Documentation Update
+
+on:
+  workflow_dispatch:
+    inputs:
+      update_type:
+        description: "Type of documentation update"
+        required: true
+        default: "minor"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      sync_readme:
+        description: "Sync changes from README.md to docs"
+        required: false
+        default: true
+        type: boolean
+      rebuild_benchmarks:
+        description: "Rebuild performance benchmark charts"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: ./docs
+
+      - name: Setup Python for benchmarks
+        if: ${{ inputs.rebuild_benchmarks }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        if: ${{ inputs.rebuild_benchmarks }}
+        run: |
+          pip install matplotlib numpy pandas seaborn
+
+      - name: Setup Go for benchmarks
+        if: ${{ inputs.rebuild_benchmarks }}
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.22.3"
+
+      - name: Start Redis and Memcached for benchmarks
+        if: ${{ inputs.rebuild_benchmarks }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y redis-server memcached
+          sudo systemctl start redis-server
+          sudo systemctl start memcached
+
+      - name: Run benchmarks and generate charts
+        if: ${{ inputs.rebuild_benchmarks }}
+        run: |
+          # Run performance tests
+          go test ./tests/redis/performance_test.go -bench=. -benchtime=10s > benchmark_results.txt
+          go test ./tests/memcached/performance_test.go -bench=. -benchtime=10s >> benchmark_results.txt
+
+          # Generate charts
+          cd benchmarks
+          python generate_chart.py
+
+          # Copy charts to docs
+          cp *.png ../docs/assets/images/ || mkdir -p ../docs/assets/images/ && cp *.png ../docs/assets/images/
+
+      - name: Sync README.md to docs
+        if: ${{ inputs.sync_readme }}
+        run: |
+          # Extract key sections from README.md and update docs
+          echo "Syncing README.md content to documentation..."
+
+          # Update installation instructions
+          sed -n '/## 📥 Installation/,/## 💡 Basic Usage/p' README.md | head -n -1 > temp_install.md
+
+          # Update performance section
+          sed -n '/## 🚀 Performance Results/,/## 📚 Documentation/p' README.md | head -n -1 > temp_performance.md
+
+          echo "README.md sections extracted and ready for integration"
+
+      - name: Update documentation timestamps
+        run: |
+          # Update last modified dates in documentation files
+          current_date=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          # Add update timestamp to index.md
+          if ! grep -q "last_modified_date" docs/index.md; then
+            echo "---" > temp_front_matter.md
+            grep -A 100 "^---$" docs/index.md | tail -n +2 | head -n -1 >> temp_front_matter.md
+            echo "last_modified_date: $current_date" >> temp_front_matter.md
+            echo "---" >> temp_front_matter.md
+            grep -A 1000 "^---$" docs/index.md | tail -n +3 >> temp_front_matter.md
+            mv temp_front_matter.md docs/index.md
+          fi
+
+      - name: Build documentation
+        run: |
+          cd docs
+          bundle exec jekyll build
+
+      - name: Test documentation
+        run: |
+          # Install html-proofer for testing
+          gem install html-proofer
+
+          # Test the built site
+          htmlproofer ./docs/_site \
+            --disable-external \
+            --check-html \
+            --ignore-urls "/localhost/,/127.0.0.1/" \
+            --ignore-files "/vendor/" \
+            --log-level :info
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          git add .
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "📚 Update documentation (${{ inputs.update_type }})
+            
+            - Updated documentation with latest changes
+            - Sync from README.md: ${{ inputs.sync_readme }}
+            - Rebuilt benchmarks: ${{ inputs.rebuild_benchmarks }}
+            - Update type: ${{ inputs.update_type }}
+            
+            [skip ci]"
+            
+            git push
+          fi
+
+      - name: Trigger GitHub Pages deployment
+        run: |
+          # Trigger the main docs workflow
+          curl -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/repos/${{ github.repository }}/dispatches \
+            -d '{"event_type":"docs-deploy"}'
+
+      - name: Create release notes
+        if: ${{ inputs.update_type == 'major' }}
+        run: |
+          # Create a summary of documentation updates
+          echo "## 📚 Documentation Update Summary" > doc_update_summary.md
+          echo "" >> doc_update_summary.md
+          echo "### Changes Made:" >> doc_update_summary.md
+          echo "- Update type: **${{ inputs.update_type }}**" >> doc_update_summary.md
+          echo "- README.md sync: ${{ inputs.sync_readme }}" >> doc_update_summary.md
+          echo "- Benchmark rebuild: ${{ inputs.rebuild_benchmarks }}" >> doc_update_summary.md
+          echo "- Timestamp: $(date -u)" >> doc_update_summary.md
+          echo "" >> doc_update_summary.md
+          echo "### Updated Files:" >> doc_update_summary.md
+          git log --name-only --pretty=format: -1 | sort | uniq | sed 's/^/- /' >> doc_update_summary.md
+
+          echo "Documentation update summary created!"
+          cat doc_update_summary.md
