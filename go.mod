@@ -1,4 +1,4 @@
-module github.com/veyselaksin/strigo
+module github.com/veyselaksin/strigo/v2
 
 go 1.22.3
 
