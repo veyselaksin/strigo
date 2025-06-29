@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -54,4 +55,16 @@ func (r *RedisClient) Reset(ctx context.Context, key string) error {
 
 func (r *RedisClient) Close() error {
 	return r.client.Close()
+}
+
+// NewRedisStorageFromClient creates a Redis storage instance from an existing Redis client
+func NewRedisStorageFromClient(client interface{}) (Storage, error) {
+	redisClient, ok := client.(*redis.Client)
+	if !ok {
+		return nil, fmt.Errorf("invalid client type: expected *redis.Client, got %T", client)
+	}
+	
+	return &RedisClient{
+		client: redisClient,
+	}, nil
 }

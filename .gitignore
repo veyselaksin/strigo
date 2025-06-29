@@ -54,3 +54,9 @@ docker/volumes/
 
 # Test cache
 .testcache/
+
+# Benchmark results (keep PNG charts but ignore raw results)
+benchmarks/redis_results.txt
+benchmarks/memcached_results.txt
+benchmarks/__pycache__/
+*.pyc

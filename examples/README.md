@@ -1,6 +1,6 @@
 # StriGo Examples
 
-This directory contains example implementations of the StriGo rate limiter using different storage backends and scenarios.
+This directory contains example implementations of the StriGo rate limiter using different storage backends, architectures, and scenarios.
 
 ## Prerequisites
 
@@ -11,58 +11,104 @@ Before running the examples, make sure you have the following services running:
 
 ## Examples
 
-### Basic Usage (`basic/main.go`)
+### 🚀 Web Server (`web/`) - **Recommended**
+
+A comprehensive example showing integration with the Fiber web framework. This example demonstrates:
+
+- **Multiple rate limiting scenarios**: API endpoints with different limits
+- **Both Redis and Memcached**: Support for different storage backends
+- **Middleware usage**: Clean integration with web framework
+- **Different strategies**: Various algorithms and time windows
+- **Real-world patterns**: Error handling and response management
+
+**Features:**
+
+- ✅ **Production-ready**: Error handling and proper middleware integration
+- ✅ **Multiple backends**: Redis, Memcached, and memory storage
+- ✅ **Framework integration**: Clean Fiber middleware patterns
+- ✅ **Easy to test**: Simple curl commands for testing
+- ✅ **Well-documented**: Clear examples and usage patterns
+
+To run:
+
+```bash
+cd web
+go run main.go
+```
+
+### Basic Usage (`basic/`)
 
 Demonstrates standalone usage of StriGo with both Redis and Memcached backends. This example shows:
+
 - Basic rate limiter configuration
 - Direct usage without web framework
-- Request simulation
+- Request simulation and testing
 
 To run:
+
 ```bash
-go run basic/main.go
+cd basic
+go run main.go
 ```
 
-### Web Server (`web/main.go`)
+## Testing Examples
 
-Shows integration with the Fiber web framework, demonstrating:
-- Middleware usage
-- Multiple rate limit rules
-- Different strategies and time windows
-- Both Redis and Memcached backends
+### Test the Web Server (Recommended)
 
-To run:
 ```bash
-go run web/main.go
+cd web
+go run main.go
 ```
 
-Then test the endpoints:
-- Redis endpoint: `http://localhost:3000/redis`
-- Memcached endpoint: `http://localhost:3000/memcached`
-- Advanced endpoint: `http://localhost:3000/advanced`
-
-## Testing with curl
-
-Test the web server endpoints:
+Then test the endpoints in another terminal:
 
 ```bash
-# Test Redis endpoint
+# Test Redis endpoint (5 requests per 10 seconds)
 for i in {1..6}; do curl http://localhost:3000/redis; echo; done
 
-# Test Memcached endpoint
-for i in {1..6}; do curl http://localhost:3000/memcached; echo; done
+# Test Memcached endpoint (3 requests per 5 seconds)
+for i in {1..4}; do curl http://localhost:3000/memcached; echo; done
 
-# Test Advanced endpoint
+# Test Advanced endpoint (10 requests per minute)
 for i in {1..11}; do curl http://localhost:3000/advanced; echo; done
 ```
+
+Expected output for rate limiting:
+
+```
+✅ Request allowed! Remaining: 4 requests
+✅ Request allowed! Remaining: 3 requests
+✅ Request allowed! Remaining: 2 requests
+✅ Request allowed! Remaining: 1 requests
+✅ Request allowed! Remaining: 0 requests
+❌ Rate limit exceeded! Try again in 10 seconds
 ```
 
-These examples demonstrate:
-1. Basic usage of both Redis and Memcached backends
-2. Web framework integration with Fiber
-3. Different rate limiting strategies
-4. Multiple rules and time windows
-5. Proper error handling and resource cleanup
-6. Real-world usage patterns
+### Test Basic Example
 
-The examples are well-documented and include instructions for testing. Users can easily modify the configurations to test different scenarios or adapt the code for their own needs.
+```bash
+cd basic
+go run main.go
+```
+
+## Example Comparison
+
+| Example | Architecture | Complexity | Production Ready | Recommended For            |
+| ------- | ------------ | ---------- | ---------------- | -------------------------- |
+| **web** | **Single**   | **Medium** | **✅ Yes**       | **Web applications**       |
+| basic   | Standalone   | Low        | Partial          | Learning and understanding |
+
+## Key Features Demonstrated
+
+1. **Web Framework Integration**: Clean Fiber middleware patterns
+2. **Multiple Storage Backends**: Redis, Memcached, and in-memory storage
+3. **Different Rate Limiting Strategies**: Various algorithms and time windows
+4. **Error Handling**: Graceful error responses and fallbacks
+5. **Real-world Usage**: Practical examples for web applications
+6. **Easy Testing**: Simple curl commands for validation
+
+## Getting Started
+
+For web applications, we recommend starting with the **web** example as it demonstrates best practices for integrating StriGo with web frameworks and provides practical patterns for production use.
+
+The examples are well-documented and include comprehensive testing instructions. Users can easily modify the configurations to test different scenarios or adapt the code for their own applications.

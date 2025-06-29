@@ -63,3 +63,15 @@ func (m *MemcachedClient) Close() error {
 	// Memcache client doesn't have a close method
 	return nil
 }
+
+// NewMemcachedStorageFromClient creates a Memcached storage instance from an existing Memcached client
+func NewMemcachedStorageFromClient(client interface{}) (Storage, error) {
+	memcachedClient, ok := client.(*memcache.Client)
+	if !ok {
+		return nil, fmt.Errorf("invalid client type: expected *memcache.Client, got %T", client)
+	}
+	
+	return &MemcachedClient{
+		client: memcachedClient,
+	}, nil
+}

@@ -3,87 +3,159 @@ package main
 import (
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/veyselaksin/strigo"
 )
 
 func main() {
+	// Memory Example (no external storage required)
+	memoryExample()
+
+	fmt.Println("\n" + strings.Repeat("-", 50))
+
 	// Redis Example
 	redisExample()
 
-	fmt.Println("\n--------------------------------")
+	fmt.Println("\n" + strings.Repeat("-", 50))
 
-	// Memcached Example
-	memcachedExample()
+	// Custom Points Example
+	customPointsExample()
+}
+
+func memoryExample() {
+	fmt.Println("📚 Memory Storage Example:")
+	fmt.Println("Using in-memory storage (no Redis/Memcached required)")
+
+	// Create options - similar to rate-limiter-flexible
+	opts := &strigo.Options{
+		Points:   5,  // 5 requests
+		Duration: 10, // per 10 seconds
+	}
+
+	// Create rate limiter - similar to new RateLimiterMemory(opts)
+	limiter, err := strigo.New(opts)
+	if err != nil {
+		log.Fatal("Failed to create limiter:", err)
+	}
+	defer limiter.Close()
+
+	// Simulate requests
+	userKey := "user:123"
+	fmt.Printf("Rate limit: %d requests per %d seconds\n", opts.Points, opts.Duration)
+	fmt.Printf("Testing key: %s\n\n", userKey)
+
+	for i := 1; i <= 7; i++ {
+		// Consume 1 point (default) - similar to rateLimiter.consume(key)
+		result, err := limiter.Consume(userKey, 1)
+		if err != nil {
+			fmt.Printf("❌ Request %d: Error - %v\n", i, err)
+			continue
+		}
+
+		status := "✅ ALLOWED"
+		if !result.Allowed {
+			status = "❌ BLOCKED"
+		}
+
+		fmt.Printf("Request %d: %s\n", i, status)
+		fmt.Printf("  Remaining: %d, Consumed: %d, Reset in: %dms\n", 
+			result.RemainingPoints, result.ConsumedPoints, result.MsBeforeNext)
+		
+		time.Sleep(500 * time.Millisecond)
+	}
 }
 
 func redisExample() {
-	fmt.Println("Redis Example:")
+	fmt.Println("🗄️  Redis Storage Example:")
+	fmt.Println("Using Redis for distributed rate limiting")
 
-	cfg := strigo.LimiterConfig{
-		Backend: strigo.Redis,
-		Address: "localhost:6379",
-		Rules: []strigo.RuleConfig{
-			{
-				Pattern:  "api_requests",
-				Period:   strigo.MINUTELY,
-				Limit:    5,
-				Strategy: strigo.TokenBucket,
-			},
-		},
-		Prefix: "redis_example",
+	// Create Redis client
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+
+	// Create options with Redis storage
+	opts := &strigo.Options{
+		Points:      10, // 10 requests  
+		Duration:    60, // per minute
+		StoreClient: redisClient,
+		KeyPrefix:   "myapp",
 	}
 
-	// Create Redis-based rate limiter
-	redisLimiter, err := strigo.NewLimiter(cfg)
+	limiter, err := strigo.New(opts)
 	if err != nil {
-		log.Fatal("Failed to create Redis limiter:", err)
+		log.Printf("⚠️  Failed to create Redis limiter (Redis not available?): %v", err)
+		return
 	}
-	defer redisLimiter.Close()
+	defer limiter.Close()
 
-	// Simulate requests
-	key := buildKey(cfg.Prefix, cfg.Rules[0].Pattern, "user123")
-	for i := 1; i <= 7; i++ {
-		allowed := redisLimiter.Allow(key)
-		fmt.Printf("Request %d: %v\n, key: %s\n", i, allowed, key)
-		time.Sleep(time.Millisecond * 100) // Small delay between requests
+	userKey := "api:user456"
+	fmt.Printf("Rate limit: %d requests per %d seconds\n", opts.Points, opts.Duration)
+	fmt.Printf("Testing key: %s\n\n", userKey)
+
+	for i := 1; i <= 3; i++ {
+		result, err := limiter.Consume(userKey, 1)
+		if err != nil {
+			fmt.Printf("❌ Request %d: Error - %v\n", i, err)
+			continue
+		}
+
+		status := "✅ ALLOWED"
+		if !result.Allowed {
+			status = "❌ BLOCKED"
+		}
+
+		fmt.Printf("Request %d: %s (Remaining: %d)\n", 
+			i, status, result.RemainingPoints)
 	}
 }
 
-func memcachedExample() {
-	fmt.Println("Memcached Example:")
+func customPointsExample() {
+	fmt.Println("🎯 Custom Points Example:")
+	fmt.Println("Different operations consume different amounts of points")
 
-	cfg := strigo.LimiterConfig{
-		Backend: strigo.Memcached,
-		Address: "localhost:11211",
-		Rules: []strigo.RuleConfig{
-			{
-				Pattern:  "api_requests",
-				Period:   strigo.MINUTELY,
-				Limit:    5,
-				Strategy: strigo.TokenBucket,
-			},
-		},
-		Prefix: "memcached_example",
+	opts := &strigo.Options{
+		Points:   100, // 100 points
+		Duration: 60,  // per minute
 	}
 
-	// Create Memcached-based rate limiter
-	memcachedLimiter, err := strigo.NewLimiter(cfg)
+	limiter, err := strigo.New(opts)
 	if err != nil {
-		log.Fatal("Failed to create Memcached limiter:", err)
+		log.Fatal("Failed to create limiter:", err)
 	}
-	defer memcachedLimiter.Close()
+	defer limiter.Close()
 
-	// Simulate requests
-	key := buildKey(cfg.Prefix, cfg.Rules[0].Pattern, "user123")
-	for i := 1; i <= 7; i++ {
-		allowed := memcachedLimiter.Allow(key)
-		fmt.Printf("Request %d: %v\n, key: %s\n", i, allowed, key)
-		time.Sleep(time.Millisecond * 100) // Small delay between requests
+	userKey := "api:premium-user"
+
+	operations := []struct {
+		name   string
+		points int64
+	}{
+		{"👁️  View Profile", 1},
+		{"✏️  Update Profile", 5},
+		{"📤 Upload File", 10},
+		{"🔍 Complex Search", 15},
+		{"📊 Generate Report", 25},
 	}
-}
 
-func buildKey(prefix string, pattern string, userID string) string {
-	return prefix + ":" + pattern + ":" + userID
+	fmt.Printf("Rate limit: %d points per %d seconds\n\n", opts.Points, opts.Duration)
+
+	for _, op := range operations {
+		result, err := limiter.Consume(userKey, op.points)
+		if err != nil {
+			fmt.Printf("❌ %s: Error - %v\n", op.name, err)
+			continue
+		}
+
+		status := "✅ ALLOWED"
+		if !result.Allowed {
+			status = "❌ BLOCKED"
+		}
+
+		fmt.Printf("%s: %s (Cost: %d points, Remaining: %d)\n",
+			op.name, status, op.points, result.RemainingPoints)
+	}
 }
