@@ -1,9 +1,11 @@
 # StriGO 🚀
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/veyselaksin/StriGO)](https://go.dev/)
-[![Version](https://img.shields.io/github/v/release/veyselaksin/StriGO?include_prereleases)](https://github.com/veyselaksin/StriGO/releases)
-[![License](https://img.shields.io/github/license/veyselaksin/StriGO)](LICENSE)
-[![Test Coverage](https://img.shields.io/badge/coverage-87%25-green)](https://github.com/veyselaksin/StriGO/actions)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/veyselaksin/strigo)](https://go.dev/)
+[![Version](https://img.shields.io/github/v/release/veyselaksin/strigo?include_prereleases)](https://github.com/veyselaksin/strigo/releases)
+[![License](https://img.shields.io/github/license/veyselaksin/strigo)](LICENSE)
+[![Test Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)](https://github.com/veyselaksin/strigo/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/veyselaksin/strigo)](https://goreportcard.com/report/github.com/veyselaksin/strigo)
+[![Docker Tests](https://img.shields.io/badge/docker-tests%20passing-blue)](https://github.com/veyselaksin/strigo/tree/main/docker)
 
 StriGO is a comprehensive and flexible rate limiter for Go applications, inspired by the popular Node.js package [`rate-limiter-flexible`](https://www.npmjs.com/package/rate-limiter-flexible). ⚡️
 
@@ -529,7 +531,7 @@ docker run --rm --network host \
 The test suite includes:
 
 - ✅ **Basic Operations**: Set, get, delete, expiration
-- ✅ **Performance Tests**: Sequential and concurrent requests (80K+ req/s)
+- ✅ **Performance Tests**: Sequential and concurrent requests (100K+ req/s)
 - ✅ **Edge Cases**: Large keys, special characters, extreme values
 - ✅ **Connection Handling**: Failure scenarios and recovery
 - ✅ **Memory Testing**: Large datasets (10K+ keys)
@@ -538,12 +540,56 @@ The test suite includes:
 
 ### Performance Benchmarks
 
-Expected performance (Docker results):
+StriGO v2.0.0 delivers exceptional performance across all storage backends:
 
-- **Redis Concurrent**: 100K+ req/s
-- **Redis Sequential**: 11K+ req/s
-- **Memcached Concurrent**: 89K+ req/s
-- **Memcached Sequential**: 11K+ req/s
+#### 📊 Benchmark Charts
+
+![Performance Benchmark](./performance_benchmark.png)
+_Performance comparison showing operation latency in microseconds (lower is better)_
+
+![Throughput Benchmark](./throughput_benchmark.png)
+_Throughput comparison showing operations per second (higher is better)_
+
+#### 🚀 Performance Results
+
+**Redis Performance:**
+
+- **Concurrent**: 109,156 req/s ⚡️
+- **Sequential**: 11,682 req/s
+- **Variable Points**: 12,148 op/s
+- **Memory Usage**: 12,095 req/s (10K keys)
+
+**Memcached Performance:**
+
+- **Concurrent**: 89,446 req/s ⚡️
+- **Sequential**: 11,773 req/s
+- **Variable Points**: 11,421 op/s
+- **Burst**: 11,551 req/s
+- **Get Status**: 22,608 gets/s
+
+**Test Environment:**
+
+- **OS:** macOS (Darwin) on Apple M3
+- **Go:** 1.22.3
+- **Storage:** Local Redis & Memcached instances
+
+#### 🔧 Generate Your Own Benchmarks
+
+```bash
+# Run automated benchmarks and generate charts
+./benchmarks/run_benchmarks.sh
+
+# Manual benchmark run
+go test ./tests/redis/performance_test.go -bench=. -v
+go test ./tests/memcached/performance_test.go -bench=. -v
+
+# Docker performance testing
+cd docker
+docker build -t strigo-tests -f Dockerfile.test ..
+docker run --rm --network host strigo-tests go test ./tests/... -bench=. -v
+```
+
+> 💡 **Note:** These benchmarks demonstrate single-operation latency. Concurrent performance is significantly higher due to Go's excellent goroutine handling and StriGO's optimized architecture.
 
 ## 📚 Documentation
 
