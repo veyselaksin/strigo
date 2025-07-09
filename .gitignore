@@ -60,3 +60,5 @@ benchmarks/redis_results.txt
 benchmarks/memcached_results.txt
 benchmarks/__pycache__/
 *.pyc
+
+web/
