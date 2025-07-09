@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 	"time"
 )
@@ -10,6 +11,7 @@ import (
 // Useful for testing or when no external storage backend is available
 type MemoryStorage struct {
 	data   map[string]int64
+	jsonData map[string][]byte
 	expiry map[string]time.Time
 	mu     sync.RWMutex
 }
@@ -17,8 +19,9 @@ type MemoryStorage struct {
 // NewMemoryStorage creates a new in-memory storage instance
 func NewMemoryStorage() *MemoryStorage {
 	storage := &MemoryStorage{
-		data:   make(map[string]int64),
-		expiry: make(map[string]time.Time),
+		data:     make(map[string]int64),
+		jsonData: make(map[string][]byte),
+		expiry:   make(map[string]time.Time),
 	}
 	
 	// Start cleanup goroutine
@@ -65,9 +68,44 @@ func (m *MemoryStorage) Reset(ctx context.Context, key string) error {
 	defer m.mu.Unlock()
 	
 	delete(m.data, key)
+	delete(m.jsonData, key)
 	delete(m.expiry, key)
 	
 	return nil
+}
+
+// SetJSON stores a JSON-serializable object with expiry
+func (m *MemoryStorage) SetJSON(ctx context.Context, key string, value interface{}, expiry time.Duration) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	
+	m.jsonData[key] = data
+	m.expiry[key] = time.Now().Add(expiry)
+	
+	return nil
+}
+
+// GetJSON retrieves and deserializes a JSON object
+func (m *MemoryStorage) GetJSON(ctx context.Context, key string, dest interface{}) error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	
+	// Check if key has expired
+	if exp, exists := m.expiry[key]; exists && time.Now().After(exp) {
+		return nil // Key expired, return empty
+	}
+	
+	data, exists := m.jsonData[key]
+	if !exists {
+		return nil // Key doesn't exist, return empty
+	}
+	
+	return json.Unmarshal(data, dest)
 }
 
 // Close closes the storage (no-op for memory storage)
@@ -86,6 +124,7 @@ func (m *MemoryStorage) cleanup() {
 		for key, exp := range m.expiry {
 			if now.After(exp) {
 				delete(m.data, key)
+				delete(m.jsonData, key)
 				delete(m.expiry, key)
 			}
 		}

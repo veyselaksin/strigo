@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -51,6 +52,29 @@ func (r *RedisClient) Get(ctx context.Context, key string) (int64, error) {
 
 func (r *RedisClient) Reset(ctx context.Context, key string) error {
 	return r.client.Del(ctx, key).Err()
+}
+
+// SetJSON stores a JSON-serializable object with expiry
+func (r *RedisClient) SetJSON(ctx context.Context, key string, value interface{}, expiry time.Duration) error {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	
+	return r.client.Set(ctx, key, data, expiry).Err()
+}
+
+// GetJSON retrieves and deserializes a JSON object
+func (r *RedisClient) GetJSON(ctx context.Context, key string, dest interface{}) error {
+	val, err := r.client.Get(ctx, key).Result()
+	if err == redis.Nil {
+		return nil // Key doesn't exist, return empty
+	}
+	if err != nil {
+		return err
+	}
+	
+	return json.Unmarshal([]byte(val), dest)
 }
 
 func (r *RedisClient) Close() error {

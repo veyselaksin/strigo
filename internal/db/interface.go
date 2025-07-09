@@ -16,6 +16,12 @@ type Storage interface {
 	// Reset resets the counter for the given key
 	Reset(ctx context.Context, key string) error
 
+	// SetJSON stores a JSON-serializable object with expiry
+	SetJSON(ctx context.Context, key string, value interface{}, expiry time.Duration) error
+
+	// GetJSON retrieves and deserializes a JSON object
+	GetJSON(ctx context.Context, key string, dest interface{}) error
+
 	// Close closes the storage connection
 	Close() error
 }

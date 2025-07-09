@@ -53,59 +53,21 @@ func (rl *RateLimiter) Consume(key string, points ...int64) (*Result, error) {
 	}
 
 	ctx := context.Background()
-	storageKey := rl.buildKey(key)
 	
-	// Get current window information
-	windowStart := rl.getWindowStart()
-	windowKey := fmt.Sprintf("%s:%d", storageKey, windowStart.Unix())
-	
-	// Get current count from storage
-	currentCount, err := rl.storage.Get(ctx, windowKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get current count: %w", err)
+	// Dispatch to strategy-specific implementation
+	switch rl.opts.Strategy {
+	case TokenBucket:
+		return rl.consumeTokenBucket(ctx, key, consumePoints)
+	case LeakyBucket:
+		return rl.consumeLeakyBucket(ctx, key, consumePoints)
+	case SlidingWindow:
+		return rl.consumeSlidingWindow(ctx, key, consumePoints)
+	case FixedWindow:
+		return rl.consumeFixedWindow(ctx, key, consumePoints)
+	default:
+		// Default to TokenBucket for unknown strategies
+		return rl.consumeTokenBucket(ctx, key, consumePoints)
 	}
-	
-	// Check if this is the first request in the window
-	isFirstInDuration := currentCount == 0
-	
-	// Calculate if the request should be allowed
-	newCount := currentCount + consumePoints
-	allowed := newCount <= rl.opts.Points
-	
-	// Calculate remaining points
-	remainingPoints := rl.opts.Points - currentCount
-	if remainingPoints < 0 {
-		remainingPoints = 0
-	}
-	
-	// Calculate time until next window
-	nextWindow := windowStart.Add(rl.opts.GetDuration())
-	msBeforeNext := time.Until(nextWindow).Milliseconds()
-	
-	// If allowed, increment the counter
-	consumedPoints := currentCount
-	if allowed {
-		_, err = rl.storage.Increment(ctx, windowKey, consumePoints, rl.opts.GetDuration())
-		if err != nil {
-			return nil, fmt.Errorf("failed to increment counter: %w", err)
-		}
-		consumedPoints = newCount
-		remainingPoints = rl.opts.Points - newCount
-		if remainingPoints < 0 {
-			remainingPoints = 0
-		}
-	}
-	
-	result := &Result{
-		MsBeforeNext:      msBeforeNext,
-		RemainingPoints:   remainingPoints,
-		ConsumedPoints:    consumedPoints,
-		IsFirstInDuration: isFirstInDuration,
-		TotalHits:         rl.opts.Points,
-		Allowed:           allowed,
-	}
-	
-	return result, nil
 }
 
 // Get returns the current rate limit information for the given key without consuming points
@@ -114,8 +76,117 @@ func (rl *RateLimiter) Get(key string) (*Result, error) {
 	ctx := context.Background()
 	storageKey := rl.buildKey(key)
 	
+	// Strategy-specific get implementations
+	switch rl.opts.Strategy {
+	case TokenBucket:
+		return rl.getTokenBucket(ctx, storageKey)
+	case LeakyBucket:
+		return rl.getLeakyBucket(ctx, storageKey)
+	case SlidingWindow:
+		return rl.getSlidingWindow(ctx, storageKey)
+	case FixedWindow:
+		return rl.getFixedWindow(ctx, storageKey)
+	default:
+		return rl.getTokenBucket(ctx, storageKey)
+	}
+}
+
+// Strategy-specific Get implementations
+
+func (rl *RateLimiter) getTokenBucket(ctx context.Context, storageKey string) (*Result, error) {
+	dataKey := fmt.Sprintf("%s:tb", storageKey)
+	var data TokenBucketData
+	err := rl.storage.GetJSON(ctx, dataKey, &data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get token bucket data: %w", err)
+	}
+	
+	if data.LastRefill.IsZero() {
+		return nil, nil // No data exists
+	}
+	
+	// Calculate current tokens
+	now := time.Now()
+	elapsed := now.Sub(data.LastRefill).Seconds()
+	tokensToAdd := elapsed * data.RefillRate
+	currentTokens := data.Tokens + tokensToAdd
+	if currentTokens > float64(data.Capacity) {
+		currentTokens = float64(data.Capacity)
+	}
+	
+	return &Result{
+		MsBeforeNext:      0,
+		RemainingPoints:   int64(currentTokens),
+		ConsumedPoints:    data.Capacity - int64(currentTokens),
+		IsFirstInDuration: false,
+		TotalHits:         rl.opts.Points,
+		Allowed:           int64(currentTokens) >= 1,
+	}, nil
+}
+
+func (rl *RateLimiter) getLeakyBucket(ctx context.Context, storageKey string) (*Result, error) {
+	dataKey := fmt.Sprintf("%s:lb", storageKey)
+	var data LeakyBucketData
+	err := rl.storage.GetJSON(ctx, dataKey, &data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get leaky bucket data: %w", err)
+	}
+	
+	if data.LastDrain.IsZero() {
+		return nil, nil // No data exists
+	}
+	
+	// Calculate current queue size after drainage
+	now := time.Now()
+	elapsed := now.Sub(data.LastDrain).Seconds()
+	requestsToDrain := int64(elapsed * data.DrainRate)
+	currentQueue := rl.drainRequests(data.Queue, requestsToDrain)
+	
+	currentPoints := int64(0)
+	for _, req := range currentQueue {
+		currentPoints += req.Points
+	}
+	
+	return &Result{
+		MsBeforeNext:      0,
+		RemainingPoints:   rl.opts.Points - currentPoints,
+		ConsumedPoints:    currentPoints,
+		IsFirstInDuration: false,
+		TotalHits:         rl.opts.Points,
+		Allowed:           currentPoints < rl.opts.Points,
+	}, nil
+}
+
+func (rl *RateLimiter) getSlidingWindow(ctx context.Context, storageKey string) (*Result, error) {
+	dataKey := fmt.Sprintf("%s:sw", storageKey)
+	var data SlidingWindowData
+	err := rl.storage.GetJSON(ctx, dataKey, &data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sliding window data: %w", err)
+	}
+	
+	if data.Requests == nil || len(data.Requests) == 0 {
+		return nil, nil // No data exists
+	}
+	
+	// Remove old requests outside window
+	now := time.Now()
+	windowStart := now.Add(-rl.opts.GetDuration())
+	validRequests := rl.removeOldRequests(data.Requests, windowStart)
+	
+	return &Result{
+		MsBeforeNext:      0,
+		RemainingPoints:   rl.opts.Points - int64(len(validRequests)),
+		ConsumedPoints:    int64(len(validRequests)),
+		IsFirstInDuration: false,
+		TotalHits:         rl.opts.Points,
+		Allowed:           int64(len(validRequests)) < rl.opts.Points,
+	}, nil
+}
+
+func (rl *RateLimiter) getFixedWindow(ctx context.Context, storageKey string) (*Result, error) {
 	// Get current window information
-	windowStart := rl.getWindowStart()
+	windowStart := rl.getWindowStartFixed()
 	windowKey := fmt.Sprintf("%s:%d", storageKey, windowStart.Unix())
 	
 	// Get current count from storage
@@ -156,6 +227,15 @@ func (rl *RateLimiter) Get(key string) (*Result, error) {
 func (rl *RateLimiter) Reset(key string) error {
 	ctx := context.Background()
 	storageKey := rl.buildKey(key)
+	
+	// Reset all strategy-specific keys
+	strategies := []string{"tb", "lb", "sw"}
+	for _, strategy := range strategies {
+		dataKey := fmt.Sprintf("%s:%s", storageKey, strategy)
+		_ = rl.storage.Reset(ctx, dataKey) // Ignore errors for non-existent keys
+	}
+	
+	// Also reset the base key (for fixed window and backward compatibility)
 	return rl.storage.Reset(ctx, storageKey)
 }
 
@@ -188,7 +268,8 @@ func (rl *RateLimiter) buildKey(key string) string {
 	return fmt.Sprintf("%s:%s", rl.opts.KeyPrefix, key)
 }
 
-// getWindowStart returns the start time of the current window based on strategy
+// Deprecated: getWindowStart is replaced by strategy-specific implementations
+// This method is kept for backward compatibility but should not be used
 func (rl *RateLimiter) getWindowStart() time.Time {
 	now := time.Now()
 	duration := rl.opts.GetDuration()

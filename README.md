@@ -12,7 +12,7 @@ StriGO is a comprehensive and flexible rate limiter for Go applications, inspire
 ## ✨ Features
 
 - 🚀 **Simple API** - Easy to use, minimal configuration required
-- 🔄 **Multiple Strategies** - Token Bucket, Leaky Bucket, Fixed Window, Sliding Window
+- 🔄 **Multiple Strategies** - Token Bucket, Leaky Bucket, Fixed Window, Sliding Window (correctly implemented)
 - 🗄️ **Flexible Storage** - Redis, Memcached, or in-memory storage
 - 📊 **Detailed Results** - Rich information about rate limit status
 - 🎯 **Point-based System** - Consume different amounts of points per operation
@@ -50,10 +50,11 @@ import (
 )
 
 func main() {
-    // Create rate limiter - 5 requests per 10 seconds
+    // Create rate limiter - 5 requests per 10 seconds using Token Bucket (default)
     opts := &strigo.Options{
         Points:   5,  // 5 requests
         Duration: 10, // per 10 seconds
+        Strategy: strigo.TokenBucket, // Classic token bucket with gradual refill
     }
 
     limiter, err := strigo.New(opts)
@@ -77,6 +78,38 @@ func main() {
 }
 ```
 
+### Different Rate Limiting Strategies
+
+```go
+// Token Bucket - Allows bursts, gradual token refill
+tokenLimiter, _ := strigo.New(&strigo.Options{
+    Points:   10,
+    Duration: 60,
+    Strategy: strigo.TokenBucket, // Tokens refill continuously over time
+})
+
+// Leaky Bucket - Smooth request processing, constant drain rate
+leakyLimiter, _ := strigo.New(&strigo.Options{
+    Points:   10,
+    Duration: 60,
+    Strategy: strigo.LeakyBucket, // Requests queue and drain at fixed rate
+})
+
+// Sliding Window - Precise time-based limiting
+slidingLimiter, _ := strigo.New(&strigo.Options{
+    Points:   10,
+    Duration: 60,
+    Strategy: strigo.SlidingWindow, // Tracks individual request timestamps
+})
+
+// Fixed Window - Simple counter reset at intervals
+fixedLimiter, _ := strigo.New(&strigo.Options{
+    Points:   10,
+    Duration: 60,
+    Strategy: strigo.FixedWindow, // Counter resets every minute
+})
+```
+
 ### Redis-based Rate Limiting
 
 ```go
@@ -95,6 +128,7 @@ func main() {
     opts := &strigo.Options{
         Points:      100, // 100 requests
         Duration:    60,  // per minute
+        Strategy:    strigo.TokenBucket, // Use token bucket algorithm
         StoreClient: redisClient,
         KeyPrefix:   "myapp",
     }
@@ -117,6 +151,7 @@ func main() {
 limiter, _ := strigo.New(&strigo.Options{
     Points:   100, // 100 points total
     Duration: 60,  // per minute
+    Strategy: strigo.TokenBucket, // Allows for burst consumption
 })
 
 operations := map[string]int64{
@@ -447,10 +482,80 @@ err := limiter.Reset("user:123")
 
 ## 🏗️ Rate Limiting Strategies
 
-- **TokenBucket** (default): Classic token bucket algorithm
-- **LeakyBucket**: Leaky bucket algorithm for smooth traffic
-- **FixedWindow**: Fixed time window counting
-- **SlidingWindow**: Sliding time window for more accurate limiting
+StriGO implements four distinct rate limiting algorithms, each with different characteristics and use cases:
+
+### **🪣 Token Bucket** (Default)
+
+- **Algorithm**: Gradual token refill with burst capability
+- **Behavior**: Tokens are continuously added to the bucket at a fixed rate. Requests consume tokens. Allows bursts up to bucket capacity.
+- **Use Case**: APIs that need to allow occasional bursts while maintaining average rate
+- **Technical**: Stores current tokens, last refill time, and refill rate. Tokens refill continuously based on elapsed time.
+
+```go
+limiter, _ := strigo.New(&strigo.Options{
+    Points:   10,        // 10 tokens capacity
+    Duration: 60,        // Refill 10 tokens per 60 seconds
+    Strategy: strigo.TokenBucket,
+})
+// Allows immediate burst of 10 requests, then 1 request every 6 seconds
+```
+
+### **💧 Leaky Bucket**
+
+- **Algorithm**: Constant drain rate with request queueing
+- **Behavior**: Requests are added to a queue and processed at a constant rate. Smooths out traffic spikes.
+- **Use Case**: Services requiring smooth, predictable traffic flow
+- **Technical**: Maintains a queue of pending requests that drain at a fixed rate regardless of arrival pattern.
+
+```go
+limiter, _ := strigo.New(&strigo.Options{
+    Points:   5,         // Queue capacity of 5 requests
+    Duration: 30,        // Process 5 requests per 30 seconds
+    Strategy: strigo.LeakyBucket,
+})
+// Processes exactly 1 request every 6 seconds, queues excess requests
+```
+
+### **🕰️ Sliding Window**
+
+- **Algorithm**: Precise timestamp tracking within rolling window
+- **Behavior**: Tracks exact timestamps of each request. Window slides continuously with time.
+- **Use Case**: When precise rate limiting is required without window boundary effects
+- **Technical**: Stores array of request timestamps, removes expired entries on each check.
+
+```go
+limiter, _ := strigo.New(&strigo.Options{
+    Points:   100,       // 100 requests
+    Duration: 3600,      // per hour (3600 seconds)
+    Strategy: strigo.SlidingWindow,
+})
+// Exactly 100 requests per any 60-minute period, sliding continuously
+```
+
+### **📊 Fixed Window**
+
+- **Algorithm**: Counter reset at fixed intervals
+- **Behavior**: Simple counter that resets completely at regular intervals.
+- **Use Case**: Simple rate limiting with clear reset boundaries
+- **Technical**: Single counter with TTL, resets to zero at interval boundaries.
+
+```go
+limiter, _ := strigo.New(&strigo.Options{
+    Points:   1000,      // 1000 requests
+    Duration: 3600,      // per hour
+    Strategy: strigo.FixedWindow,
+})
+// 1000 requests per hour, counter resets at top of each hour
+```
+
+### **📈 Strategy Comparison**
+
+| Strategy           | Burst Handling       | Traffic Smoothing | Memory Usage | Precision | Reset Behavior     |
+| ------------------ | -------------------- | ----------------- | ------------ | --------- | ------------------ |
+| **Token Bucket**   | ✅ Allows bursts     | ⚠️ Moderate       | Low          | High      | Continuous refill  |
+| **Leaky Bucket**   | ❌ Queues excess     | ✅ Excellent      | Medium       | High      | Constant drainage  |
+| **Sliding Window** | ⚠️ Depends on window | ⚠️ Moderate       | High         | Excellent | Continuous sliding |
+| **Fixed Window**   | ✅ At window start   | ❌ Poor           | Very Low     | Low       | Periodic reset     |
 
 ## 🗄️ Storage Backends
 

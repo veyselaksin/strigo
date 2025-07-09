@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -61,6 +62,33 @@ func (m *MemcachedClient) Get(ctx context.Context, key string) (int64, error) {
 
 func (m *MemcachedClient) Reset(ctx context.Context, key string) error {
 	return m.client.Delete(key)
+}
+
+// SetJSON stores a JSON-serializable object with expiry
+func (m *MemcachedClient) SetJSON(ctx context.Context, key string, value interface{}, expiry time.Duration) error {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	
+	return m.client.Set(&memcache.Item{
+		Key:        key,
+		Value:      data,
+		Expiration: int32(expiry.Seconds()),
+	})
+}
+
+// GetJSON retrieves and deserializes a JSON object
+func (m *MemcachedClient) GetJSON(ctx context.Context, key string, dest interface{}) error {
+	item, err := m.client.Get(key)
+	if err == memcache.ErrCacheMiss {
+		return nil // Key doesn't exist, return empty
+	}
+	if err != nil {
+		return err
+	}
+	
+	return json.Unmarshal(item.Value, dest)
 }
 
 func (m *MemcachedClient) Close() error {
