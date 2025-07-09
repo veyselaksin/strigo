@@ -304,4 +304,4 @@ _Tested on Apple M3, Go 1.22.3_
 [View on GitHub](https://github.com/veyselaksin/strigo){: .btn .btn-purple .mr-2 }
 [API Reference](api){: .btn .btn-blue }
 
-*Last synced with README.md: 2025-06-29 15:15:49 UTC*
+*Last synced with README.md: 2025-07-09 22:08:55 UTC
